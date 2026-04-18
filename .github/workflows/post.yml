@@ -1,0 +1,23 @@
+name: Post Quote to Facebook
+
+on:
+  schedule:
+    - cron: '0 1 * * *'   # 7am Sri Lanka time
+    - cron: '0 6 * * *'   # 12pm Sri Lanka time
+    - cron: '0 13 * * *'  # 7pm Sri Lanka time
+  workflow_dispatch:       # allows manual trigger
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - run: pip install requests Pillow python-dotenv
+      - run: python main.py
+        env:
+          FACEBOOK_PAGE_ID: ${{ secrets.FACEBOOK_PAGE_ID }}
+          FACEBOOK_ACCESS_TOKEN: ${{ secrets.FACEBOOK_ACCESS_TOKEN }}
+          UNSPLASH_ACCESS_KEY: ${{ secrets.UNSPLASH_ACCESS_KEY }}
