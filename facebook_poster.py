@@ -12,7 +12,8 @@ def post_to_facebook(image_path, quote, author):
         response = requests.post(upload_url, data={
             "caption": caption,
             "access_token": token,
-            "published": "true"
+            "published": "true",
+            "privacy": '{"value":"EVERYONE"}'  # ✅ Force public
         }, files={"source": img})
 
     result = response.json()
