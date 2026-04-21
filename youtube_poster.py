@@ -14,7 +14,12 @@ def post_to_youtube(video_path, quote, author):
 
     youtube = build("youtube", "v3", credentials=creds)
 
-    title = f"{quote[:80]} — {author}"
+    # Fix title - make sure it's never empty and within 100 char limit
+    raw_title = f"{quote[:70]} — {author[:20]}"
+    title = raw_title.strip()
+    if not title:
+        title = "Daily Motivational Quote"
+
     description = f'"{quote}"\n\n— {author}\n\n💪 Follow for daily motivation!\n\n#Shorts #Motivation #Quotes #DailyQuote #Inspiration'
 
     request = youtube.videos().insert(
