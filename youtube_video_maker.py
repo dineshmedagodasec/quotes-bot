@@ -56,7 +56,7 @@ def create_youtube_short(quote, author, image_path):
         if len(quote_text) > 100:
             quote_text = quote_text[:100] + '..."'
 
-        # Quote text - appears after 1 second
+        # Quote text — slides up from center after 1 second
         quote_clip = TextClip(
             text=quote_text,
             font_size=55,
@@ -65,11 +65,15 @@ def create_youtube_short(quote, author, image_path):
             method="caption",
             size=(900, None),
             text_align="center"
-        ).with_position(("center", 600))
+        )
+        quote_clip = quote_clip.with_position(
+            lambda t: ("center", max(600, 800 - int(t * 100)))
+            if t < 2 else ("center", 600)
+        )
         quote_clip = quote_clip.with_start(1)
         quote_clip = quote_clip.with_duration(duration - 1)
 
-        # Author text - appears after 3 seconds
+        # Author text — slides up after 3 seconds
         author_clip = TextClip(
             text=f"— {author}",
             font_size=40,
@@ -77,19 +81,24 @@ def create_youtube_short(quote, author, image_path):
             font="DejaVuSans",
             method="label",
             text_align="center"
-        ).with_position(("center", 900))
+        )
+        author_clip = author_clip.with_position(
+            lambda t: ("center", max(900, 1100 - int(t * 100)))
+            if t < 2 else ("center", 900)
+        )
         author_clip = author_clip.with_start(3)
         author_clip = author_clip.with_duration(duration - 3)
 
-        # Channel watermark
+        # Channel watermark — fades in from bottom
         channel_clip = TextClip(
-            text="Daily Dose of Motivation",
-            font_size=30,
+            text="✨ Daily Dose of Motivation",
+            font_size=32,
             color="white",
             font="DejaVuSans",
             method="label",
             text_align="center"
-        ).with_position(("center", 1800))
+        )
+        channel_clip = channel_clip.with_position(("center", 1800))
         channel_clip = channel_clip.with_start(0)
         channel_clip = channel_clip.with_duration(duration)
 
@@ -100,6 +109,8 @@ def create_youtube_short(quote, author, image_path):
             author_clip,
             channel_clip
         ])
+
+        print("✅ Text animations added successfully!")
 
     except Exception as e:
         print(f"⚠️ Text animation failed: {e} — using plain video")
