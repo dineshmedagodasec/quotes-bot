@@ -62,34 +62,34 @@ def create_youtube_short(quote, author, image_path):
             text=quote_text,
             font_size=55,
             color="white",
-            font="DejaVu-Sans-Bold",
+            font="DejaVuSans-Bold",
             method="caption",
             size=(900, None),
             text_align="center"
         ).with_position(("center", 600))
         quote_clip = quote_clip.with_start(1)
         quote_clip = quote_clip.with_duration(duration - 1)
-        quote_clip = quote_clip.crossfadein(1.5)  # Fade in animation
+        quote_clip = quote_clip.crossfadein(1.5)
 
         # Author text - fades in after 3 seconds
         author_clip = TextClip(
             text=f"— {author}",
             font_size=40,
             color="#FFD700",
-            font="DejaVu-Sans",
+            font="DejaVuSans",
             method="label",
             text_align="center"
         ).with_position(("center", 900))
         author_clip = author_clip.with_start(3)
         author_clip = author_clip.with_duration(duration - 3)
-        author_clip = author_clip.crossfadein(1.5)  # Fade in animation
+        author_clip = author_clip.crossfadein(1.5)
 
         # Channel name watermark
         channel_clip = TextClip(
             text="Daily Dose of Motivation",
             font_size=30,
             color="white",
-            font="DejaVu-Sans",
+            font="DejaVuSans",
             method="label",
             text_align="center"
         ).with_position(("center", 1800))
