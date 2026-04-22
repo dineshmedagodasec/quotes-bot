@@ -13,16 +13,17 @@ def run_bot():
     quote, author = get_quote()
     print(f"✅ Quote: {quote} — {author}")
 
-    print("🎨 Creating image...")
-    image_path = create_quote_image(quote, author)
-    print(f"✅ Image created: {image_path}")
+    print("🎨 Creating images...")
+    fb_image_path, yt_image_path = create_quote_image(quote, author)
+    print(f"✅ Facebook image: {fb_image_path}")
+    print(f"✅ YouTube image: {yt_image_path}")
 
     print("📤 Posting to Facebook...")
-    fb_result = post_to_facebook(image_path, quote, author)
+    fb_result = post_to_facebook(fb_image_path, quote, author)
     print(f"✅ Facebook done: {fb_result}")
 
     print("🎬 Creating YouTube Short...")
-    video_path = create_youtube_short(quote, author, image_path)
+    video_path = create_youtube_short(quote, author, yt_image_path)
     print(f"✅ Video created: {video_path}")
 
     print("📤 Uploading to YouTube...")
