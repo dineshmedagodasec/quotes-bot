@@ -1,4 +1,4 @@
-from moviepy import ImageClip, AudioFileClip, CompositeAudioClip
+from moviepy import ImageClip, AudioFileClip, CompositeAudioClip, TextClip, CompositeVideoClip
 from moviepy.audio.fx import MultiplyVolume
 from PIL import Image
 from gtts import gTTS
@@ -30,7 +30,9 @@ def create_youtube_short(quote, author, image_path):
 
     # Step 3: Load voice audio
     voice_clip = AudioFileClip(audio_path)
-    duration = min(voice_clip.duration + 2, 59)
+    # Use full audio length or minimum 30 seconds
+    duration = max(voice_clip.duration + 2, 30)
+    duration = min(duration, 59)  # Max 59 seconds for Shorts
 
     # Step 4: Pick random music track
     music_file = random.choice(MUSIC_FILES)
@@ -39,26 +41,83 @@ def create_youtube_short(quote, author, image_path):
     try:
         music_clip = AudioFileClip(music_file)
         music_clip = music_clip.subclipped(0, duration)
-        # Fix: Use MultiplyVolume effect instead
         music_clip = music_clip.with_effects([MultiplyVolume(0.15)])
         final_audio = CompositeAudioClip([music_clip, voice_clip])
     except Exception as e:
         print(f"⚠️ Music failed: {e} — using voice only")
         final_audio = voice_clip
 
-    # Step 5: Create video
+    # Step 5: Create base video
     video = ImageClip(vertical_path, duration=duration)
     video = video.with_audio(final_audio)
 
+    # Step 6: Add animated text overlays
+    try:
+        # Quote text - fades in after 1 second
+        quote_text = f'"{quote}"'
+        if len(quote_text) > 100:
+            quote_text = quote_text[:100] + '..."'
+
+        quote_clip = TextClip(
+            text=quote_text,
+            font_size=55,
+            color="white",
+            font="DejaVu-Sans-Bold",
+            method="caption",
+            size=(900, None),
+            text_align="center"
+        ).with_position(("center", 600))
+        quote_clip = quote_clip.with_start(1)
+        quote_clip = quote_clip.with_duration(duration - 1)
+        quote_clip = quote_clip.crossfadein(1.5)  # Fade in animation
+
+        # Author text - fades in after 3 seconds
+        author_clip = TextClip(
+            text=f"— {author}",
+            font_size=40,
+            color="#FFD700",
+            font="DejaVu-Sans",
+            method="label",
+            text_align="center"
+        ).with_position(("center", 900))
+        author_clip = author_clip.with_start(3)
+        author_clip = author_clip.with_duration(duration - 3)
+        author_clip = author_clip.crossfadein(1.5)  # Fade in animation
+
+        # Channel name watermark
+        channel_clip = TextClip(
+            text="Daily Dose of Motivation",
+            font_size=30,
+            color="white",
+            font="DejaVu-Sans",
+            method="label",
+            text_align="center"
+        ).with_position(("center", 1800))
+        channel_clip = channel_clip.with_start(0)
+        channel_clip = channel_clip.with_duration(duration)
+        channel_clip = channel_clip.crossfadein(1.0)
+
+        # Combine all layers
+        final_video = CompositeVideoClip([
+            video,
+            quote_clip,
+            author_clip,
+            channel_clip
+        ])
+
+    except Exception as e:
+        print(f"⚠️ Text animation failed: {e} — using plain video")
+        final_video = video
+
     output_path = "youtube_short.mp4"
-    video.write_videofile(
+    final_video.write_videofile(
         output_path,
         fps=24,
         codec="libx264",
         audio_codec="aac"
     )
 
-    # Step 6: Cleanup
+    # Step 7: Cleanup
     for f in [audio_path, vertical_path]:
         if os.path.exists(f):
             os.remove(f)
