@@ -1,10 +1,10 @@
 from moviepy import ImageClip, AudioFileClip, CompositeAudioClip
+from moviepy.audio.fx import MultiplyVolume
 from PIL import Image
 from gtts import gTTS
 import os
 import random
 
-# 7 music tracks from our repo
 MUSIC_FILES = [
     "music/music_1.mp3",
     "music/music_2.mp3",
@@ -38,11 +38,9 @@ def create_youtube_short(quote, author, image_path):
 
     try:
         music_clip = AudioFileClip(music_file)
-        # Trim music to video duration
         music_clip = music_clip.subclipped(0, duration)
-        # Lower music volume to 15%
-        music_clip = music_clip.multiply_volume(0.15)
-        # Mix voice and music together
+        # Fix: Use MultiplyVolume effect instead
+        music_clip = music_clip.with_effects([MultiplyVolume(0.15)])
         final_audio = CompositeAudioClip([music_clip, voice_clip])
     except Exception as e:
         print(f"⚠️ Music failed: {e} — using voice only")
@@ -60,7 +58,7 @@ def create_youtube_short(quote, author, image_path):
         audio_codec="aac"
     )
 
-    # Step 6: Cleanup temp files
+    # Step 6: Cleanup
     for f in [audio_path, vertical_path]:
         if os.path.exists(f):
             os.remove(f)
