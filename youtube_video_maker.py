@@ -1,29 +1,56 @@
-from moviepy import ImageClip, AudioFileClip
+from moviepy import ImageClip, AudioFileClip, CompositeAudioClip
 from PIL import Image
 from gtts import gTTS
 import os
 import random
 
+# 7 music tracks from our repo
+MUSIC_FILES = [
+    "music/music_1.mp3",
+    "music/music_2.mp3",
+    "music/music_3.mp3",
+    "music/music_4.mp3",
+    "music/music_5.mp3",
+    "music/music_6.mp3",
+    "music/music_7.mp3",
+]
+
 def create_youtube_short(quote, author, image_path):
-    # Generate voice audio
+    # Step 1: Generate voice audio
     tts_text = f"{quote}... by {author}"
     tts = gTTS(text=tts_text, lang='en', slow=False)
     audio_path = "quote_audio.mp3"
     tts.save(audio_path)
 
-    # Create vertical image for Shorts
+    # Step 2: Create vertical image for Shorts
     img = Image.open(image_path)
     img_resized = img.resize((1080, 1920))
     vertical_path = "vertical_quote.png"
     img_resized.save(vertical_path)
 
-    # Load voice audio
+    # Step 3: Load voice audio
     voice_clip = AudioFileClip(audio_path)
     duration = min(voice_clip.duration + 2, 59)
 
-    # Create video with voice only
+    # Step 4: Pick random music track
+    music_file = random.choice(MUSIC_FILES)
+    print(f"🎵 Using music: {music_file}")
+
+    try:
+        music_clip = AudioFileClip(music_file)
+        # Trim music to video duration
+        music_clip = music_clip.subclipped(0, duration)
+        # Lower music volume to 15%
+        music_clip = music_clip.multiply_volume(0.15)
+        # Mix voice and music together
+        final_audio = CompositeAudioClip([music_clip, voice_clip])
+    except Exception as e:
+        print(f"⚠️ Music failed: {e} — using voice only")
+        final_audio = voice_clip
+
+    # Step 5: Create video
     video = ImageClip(vertical_path, duration=duration)
-    video = video.with_audio(voice_clip)
+    video = video.with_audio(final_audio)
 
     output_path = "youtube_short.mp4"
     video.write_videofile(
@@ -33,7 +60,7 @@ def create_youtube_short(quote, author, image_path):
         audio_codec="aac"
     )
 
-    # Cleanup temp files
+    # Step 6: Cleanup temp files
     for f in [audio_path, vertical_path]:
         if os.path.exists(f):
             os.remove(f)
