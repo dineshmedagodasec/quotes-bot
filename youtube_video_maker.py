@@ -4,6 +4,7 @@ from PIL import Image
 from gtts import gTTS
 import os
 import random
+import textwrap
 
 MUSIC_FILES = [
     "music/music_1.mp3",
@@ -52,18 +53,18 @@ def create_youtube_short(quote, author, image_path):
 
     # Step 6: Add animated text overlays
     try:
-        quote_text = f'"{quote}"'
-        if len(quote_text) > 100:
-            quote_text = quote_text[:100] + '..."'
+        # Fix word wrapping — never cut words in middle
+        wrapped_quote = textwrap.fill(quote, width=35)
+        quote_text = f'"{wrapped_quote}"'
 
-        # Quote text — slides up from center after 1 second
+        # Quote text — slides up smoothly after 1 second
         quote_clip = TextClip(
             text=quote_text,
-            font_size=55,
+            font_size=52,
             color="white",
             font="DejaVuSans-Bold",
             method="caption",
-            size=(900, None),
+            size=(950, None),
             text_align="center"
         )
         quote_clip = quote_clip.with_position(
@@ -89,7 +90,7 @@ def create_youtube_short(quote, author, image_path):
         author_clip = author_clip.with_start(3)
         author_clip = author_clip.with_duration(duration - 3)
 
-        # Channel watermark — fades in from bottom
+        # Channel watermark
         channel_clip = TextClip(
             text="✨ Daily Dose of Motivation",
             font_size=32,
