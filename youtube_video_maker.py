@@ -58,11 +58,11 @@ def create_youtube_short(quote, author, image_path):
 
         quote_clip = TextClip(
             text=quote_text,
-            font_size=52,
+            font_size=60,
             color="white",
             font="DejaVuSans-Bold",
             method="caption",
-            size=(950, None),
+            size=(900, None),
             text_align="center"
         )
         quote_clip = quote_clip.with_position(
