@@ -54,7 +54,7 @@ def create_youtube_short(quote, author, image_path):
     # Step 6: Add text overlays
     try:
         wrapped_quote = textwrap.fill(quote, width=30)
-        quote_text = f'"{wrapped_quote}"'
+        quote_text = f'"{wrapped_quote}"\n\n'
 
         # Quote text
         quote_clip = TextClip(
@@ -74,7 +74,7 @@ def create_youtube_short(quote, author, image_path):
 
         # Author text
         author_clip = TextClip(
-            text=f"— {author}",
+            text=f"— {author}\n\n",
             font_size=34,
             color="#FFD700",
             font="DejaVuSans",
