@@ -59,7 +59,7 @@ def create_youtube_short(quote, author, image_path):
         # Quote text — extra padding for descenders
         quote_clip = TextClip(
             text=quote_text,
-            font_size=44,
+            font_size=60,
             color="white",
             font="DejaVuSans-Bold",
             method="caption",
