@@ -58,14 +58,15 @@ def create_youtube_short(quote, author, image_path):
 
         # Quote text — extra padding for descenders
         quote_clip = TextClip(
-            text=quote_text,
-            font_size=60,
-            color="white",
-            font="DejaVuSans-Bold",
-            method="caption",
-            size=(820, None),
-            text_align="center",
-            stroke_color="black",
+    text=quote_text,
+    font_size=60,
+    color="white",
+    font="LiberationSans-Bold",  # ← Change font
+    method="caption",
+    size=(820, None),
+    text_align="center",
+    stroke_color="black",
+    stroke_width=1
             stroke_width=1
         )
         quote_clip = quote_clip.with_position(("center", 500))
