@@ -84,7 +84,7 @@ def create_youtube_short(quote, author, image_path):
             stroke_color="black",
             stroke_width=1
         )
-        author_clip = author_clip.with_position(("center", 1000))
+        author_clip = author_clip.with_position(("center", 1200))
         author_clip = author_clip.with_start(3)
         author_clip = author_clip.with_duration(duration - 3)
 
