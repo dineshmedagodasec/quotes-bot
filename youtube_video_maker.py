@@ -53,49 +53,54 @@ def create_youtube_short(quote, author, image_path):
 
     # Step 6: Add text overlays
     try:
-        wrapped_quote = textwrap.fill(quote, width=35)
+        wrapped_quote = textwrap.fill(quote, width=30)
         quote_text = f'"{wrapped_quote}"'
 
+        # Quote text — extra padding for descenders
         quote_clip = TextClip(
             text=quote_text,
-            font_size=60,
+            font_size=44,
             color="white",
             font="DejaVuSans-Bold",
             method="caption",
-            size=(900, None),
-            text_align="center"
+            size=(820, None),
+            text_align="center",
+            stroke_color="black",
+            stroke_width=1
         )
-        quote_clip = quote_clip.with_position(
-            lambda t: ("center", max(600, 800 - int(t * 100)))
-            if t < 2 else ("center", 600)
-        )
+        quote_clip = quote_clip.with_position(("center", 550))
         quote_clip = quote_clip.with_start(1)
         quote_clip = quote_clip.with_duration(duration - 1)
 
+        # Author text — extra padding for descenders
         author_clip = TextClip(
             text=f"— {author}",
-            font_size=40,
+            font_size=34,
             color="#FFD700",
             font="DejaVuSans",
-            method="label",
-            text_align="center"
+            method="caption",
+            size=(780, None),
+            text_align="center",
+            stroke_color="black",
+            stroke_width=1
         )
-        author_clip = author_clip.with_position(
-            lambda t: ("center", max(900, 1100 - int(t * 100)))
-            if t < 2 else ("center", 900)
-        )
+        author_clip = author_clip.with_position(("center", 980))
         author_clip = author_clip.with_start(3)
         author_clip = author_clip.with_duration(duration - 3)
 
+        # Channel watermark
         channel_clip = TextClip(
             text="Follow for daily motivation!",
-            font_size=32,
+            font_size=28,
             color="white",
             font="DejaVuSans",
-            method="label",
-            text_align="center"
+            method="caption",
+            size=(780, None),
+            text_align="center",
+            stroke_color="black",
+            stroke_width=1
         )
-        channel_clip = channel_clip.with_position(("center", 1800))
+        channel_clip = channel_clip.with_position(("center", 1780))
         channel_clip = channel_clip.with_start(0)
         channel_clip = channel_clip.with_duration(duration)
 
