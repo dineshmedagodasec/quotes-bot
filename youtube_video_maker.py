@@ -16,6 +16,56 @@ MUSIC_FILES = [
     "music/music_7.mp3",
 ]
 
+# Animation styles
+ANIMATIONS = ["slide_up", "slide_down", "slide_left", "slide_right", "zoom_in", "bounce", "pop"]
+
+def get_position(animation, t, base_x, base_y, video_width=1080, video_height=1920):
+    if animation == "slide_up":
+        y = max(base_y, base_y + 200 - int(t * 150)) if t < 1.5 else base_y
+        return ("center", y)
+    elif animation == "slide_down":
+        y = max(base_y, base_y - 200 + int(t * 150)) if t < 1.5 else base_y
+        return ("center", y)
+    elif animation == "slide_left":
+        x = max(0, video_width - int(t * 800)) if t < 1.5 else "center"
+        return (x, base_y)
+    elif animation == "slide_right":
+        x = min(video_width, int(t * 800) - video_width) if t < 1.5 else "center"
+        return (x, base_y)
+    elif animation == "bounce":
+        if t < 0.3:
+            y = base_y - int(t * 400)
+        elif t < 0.6:
+            y = base_y - 120 + int((t - 0.3) * 400)
+        elif t < 0.8:
+            y = base_y + int((t - 0.6) * 200)
+        elif t < 1.0:
+            y = base_y + 40 - int((t - 0.8) * 200)
+        else:
+            y = base_y
+        return ("center", y)
+    elif animation == "zoom_in":
+        return ("center", base_y)
+    elif animation == "pop":
+        return ("center", base_y)
+    else:
+        return ("center", base_y)
+
+def apply_animation(clip, animation, base_y):
+    if animation in ["slide_up", "slide_down", "bounce"]:
+        clip = clip.with_position(lambda t: get_position(animation, t, "center", base_y))
+    elif animation == "slide_left":
+        clip = clip.with_position(lambda t: get_position(animation, t, "center", base_y))
+    elif animation == "slide_right":
+        clip = clip.with_position(lambda t: get_position(animation, t, "center", base_y))
+    elif animation == "zoom_in":
+        clip = clip.with_position(("center", base_y))
+    elif animation == "pop":
+        clip = clip.with_position(("center", base_y))
+    else:
+        clip = clip.with_position(("center", base_y))
+    return clip
+
 def create_youtube_short(quote, author, image_path):
     # Step 1: Generate voice audio
     tts_text = f"{quote}... by {author}"
@@ -51,7 +101,11 @@ def create_youtube_short(quote, author, image_path):
     video = ImageClip(vertical_path, duration=duration)
     video = video.with_audio(final_audio)
 
-    # Step 6: Add text overlays
+    # Step 6: Pick random animation
+    animation = random.choice(ANIMATIONS)
+    print(f"Animation: {animation}")
+
+    # Step 7: Add text overlays
     try:
         wrapped_quote = textwrap.fill(quote, width=30)
         quote_text = f'"{wrapped_quote}"\n\n'
@@ -68,7 +122,7 @@ def create_youtube_short(quote, author, image_path):
             stroke_color="black",
             stroke_width=1
         )
-        quote_clip = quote_clip.with_position(("center", 500))
+        quote_clip = apply_animation(quote_clip, animation, 500)
         quote_clip = quote_clip.with_start(1)
         quote_clip = quote_clip.with_duration(duration - 1)
 
@@ -84,7 +138,7 @@ def create_youtube_short(quote, author, image_path):
             stroke_color="black",
             stroke_width=1
         )
-        author_clip = author_clip.with_position(("center", 1200))
+        author_clip = apply_animation(author_clip, animation, 1200)
         author_clip = author_clip.with_start(3)
         author_clip = author_clip.with_duration(duration - 3)
 
@@ -113,7 +167,7 @@ def create_youtube_short(quote, author, image_path):
         print("Text animations added!")
 
     except Exception as e:
-        print(f"Text animation failed: {e}")
+        print(f"Text animation failed: {e} — using plain video")
         final_video = video
 
     output_path = "youtube_short.mp4"
