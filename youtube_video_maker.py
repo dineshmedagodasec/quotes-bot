@@ -56,24 +56,23 @@ def create_youtube_short(quote, author, image_path):
         wrapped_quote = textwrap.fill(quote, width=30)
         quote_text = f'"{wrapped_quote}"'
 
-        # Quote text — extra padding for descenders
+        # Quote text
         quote_clip = TextClip(
-    text=quote_text,
-    font_size=60,
-    color="white",
-    font="LiberationSans-Bold",  # ← Change font
-    method="caption",
-    size=(820, None),
-    text_align="center",
-    stroke_color="black",
-    stroke_width=1
+            text=quote_text,
+            font_size=60,
+            color="white",
+            font="LiberationSans-Bold",
+            method="caption",
+            size=(820, None),
+            text_align="center",
+            stroke_color="black",
             stroke_width=1
         )
         quote_clip = quote_clip.with_position(("center", 500))
         quote_clip = quote_clip.with_start(1)
         quote_clip = quote_clip.with_duration(duration - 1)
 
-        # Author text — extra padding for descenders
+        # Author text
         author_clip = TextClip(
             text=f"— {author}",
             font_size=34,
