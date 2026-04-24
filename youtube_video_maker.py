@@ -1,10 +1,11 @@
-from moviepy import ImageClip, AudioFileClip, CompositeAudioClip, TextClip, CompositeVideoClip
+from moviepy import VideoFileClip, AudioFileClip, CompositeAudioClip, TextClip, CompositeVideoClip, ColorClip, concatenate_videoclips, ImageClip
 from moviepy.audio.fx import MultiplyVolume
 from PIL import Image
 from gtts import gTTS
 import os
 import random
 import textwrap
+import requests
 
 MUSIC_FILES = [
     "music/music_1.mp3",
@@ -16,52 +17,93 @@ MUSIC_FILES = [
     "music/music_7.mp3",
 ]
 
-# Animation styles
-ANIMATIONS = ["slide_up", "slide_down", "slide_left", "slide_right", "zoom_in", "bounce", "pop"]
+ANIMATIONS = ["slide_up", "slide_down", "slide_left", "bounce"]
 
-def get_position(animation, t, base_x, base_y, video_width=1080, video_height=1920):
-    if animation == "slide_up":
-        y = max(base_y, base_y + 200 - int(t * 150)) if t < 1.5 else base_y
-        return ("center", y)
-    elif animation == "slide_down":
-        y = max(base_y, base_y - 200 + int(t * 150)) if t < 1.5 else base_y
-        return ("center", y)
-    elif animation == "slide_left":
-        x = max(0, video_width - int(t * 800)) if t < 1.5 else "center"
-        return (x, base_y)
-    elif animation == "slide_right":
-        x = min(video_width, int(t * 800) - video_width) if t < 1.5 else "center"
-        return (x, base_y)
-    elif animation == "bounce":
-        if t < 0.3:
-            y = base_y - int(t * 400)
-        elif t < 0.6:
-            y = base_y - 120 + int((t - 0.3) * 400)
-        elif t < 0.8:
-            y = base_y + int((t - 0.6) * 200)
-        elif t < 1.0:
-            y = base_y + 40 - int((t - 0.8) * 200)
-        else:
-            y = base_y
-        return ("center", y)
-    elif animation == "zoom_in":
-        return ("center", base_y)
-    elif animation == "pop":
-        return ("center", base_y)
-    else:
-        return ("center", base_y)
+SEARCH_KEYWORDS = [
+    "nature sunset",
+    "ocean waves",
+    "mountain sunrise",
+    "forest peaceful",
+    "sky clouds",
+    "waterfall nature",
+    "city timelapse",
+    "stars night sky",
+    "flowers blooming",
+    "river flowing"
+]
+
+def get_pexels_video(quote):
+    api_key = os.getenv("PEXELS_API_KEY")
+    keyword = random.choice(SEARCH_KEYWORDS)
+    print(f"Searching video for: {keyword}")
+
+    url = f"https://api.pexels.com/videos/search?query={keyword}&orientation=portrait&size=medium&per_page=10"
+    headers = {"Authorization": api_key}
+
+    try:
+        response = requests.get(url, headers=headers)
+        data = response.json()
+        videos = data.get("videos", [])
+
+        if not videos:
+            print("No videos found")
+            return None
+
+        video = random.choice(videos)
+        video_files = video.get("video_files", [])
+
+        best_file = None
+        for vf in video_files:
+            if vf.get("quality") in ["hd", "sd"]:
+                best_file = vf
+                break
+
+        if not best_file and video_files:
+            best_file = video_files[0]
+
+        if best_file:
+            video_url = best_file["link"]
+            print(f"Downloading video...")
+            video_response = requests.get(video_url, stream=True)
+            video_path = "background_video.mp4"
+            with open(video_path, "wb") as f:
+                for chunk in video_response.iter_content(chunk_size=8192):
+                    f.write(chunk)
+            return video_path
+
+    except Exception as e:
+        print(f"Pexels video failed: {e}")
+        return None
 
 def apply_animation(clip, animation, base_y):
-    if animation in ["slide_up", "slide_down", "bounce"]:
-        clip = clip.with_position(lambda t: get_position(animation, t, "center", base_y))
+    if animation == "slide_up":
+        clip = clip.with_position(
+            lambda t: ("center", max(base_y, base_y + 200 - int(t * 150)))
+            if t < 1.5 else ("center", base_y)
+        )
+    elif animation == "slide_down":
+        clip = clip.with_position(
+            lambda t: ("center", max(base_y - 200, base_y - 200 + int(t * 150)))
+            if t < 1.5 else ("center", base_y)
+        )
     elif animation == "slide_left":
-        clip = clip.with_position(lambda t: get_position(animation, t, "center", base_y))
-    elif animation == "slide_right":
-        clip = clip.with_position(lambda t: get_position(animation, t, "center", base_y))
-    elif animation == "zoom_in":
-        clip = clip.with_position(("center", base_y))
-    elif animation == "pop":
-        clip = clip.with_position(("center", base_y))
+        clip = clip.with_position(
+            lambda t: (max(0, 1080 - int(t * 800)), base_y)
+            if t < 1.5 else ("center", base_y)
+        )
+    elif animation == "bounce":
+        def bounce_pos(t):
+            if t < 0.3:
+                return ("center", base_y - int(t * 400))
+            elif t < 0.6:
+                return ("center", base_y - 120 + int((t - 0.3) * 400))
+            elif t < 0.8:
+                return ("center", base_y + int((t - 0.6) * 200))
+            elif t < 1.0:
+                return ("center", base_y + 40 - int((t - 0.8) * 200))
+            else:
+                return ("center", base_y)
+        clip = clip.with_position(bounce_pos)
     else:
         clip = clip.with_position(("center", base_y))
     return clip
@@ -73,18 +115,12 @@ def create_youtube_short(quote, author, image_path):
     audio_path = "quote_audio.mp3"
     tts.save(audio_path)
 
-    # Step 2: Create vertical image for Shorts
-    img = Image.open(image_path)
-    img_resized = img.resize((1080, 1920))
-    vertical_path = "vertical_quote.png"
-    img_resized.save(vertical_path)
-
-    # Step 3: Load voice audio
+    # Step 2: Load voice audio
     voice_clip = AudioFileClip(audio_path)
     duration = max(voice_clip.duration + 2, 30)
     duration = min(duration, 59)
 
-    # Step 4: Pick random music track
+    # Step 3: Pick random music
     music_file = random.choice(MUSIC_FILES)
     print(f"Music: {music_file}")
 
@@ -97,15 +133,62 @@ def create_youtube_short(quote, author, image_path):
         print(f"Music failed: {e}")
         final_audio = voice_clip
 
-    # Step 5: Create base video
-    video = ImageClip(vertical_path, duration=duration)
-    video = video.with_audio(final_audio)
+    # Step 4: Get background video from Pexels
+    bg_video_path = get_pexels_video(quote)
+    video = None
 
-    # Step 6: Pick random animation
+    if bg_video_path:
+        try:
+            bg_video = VideoFileClip(bg_video_path)
+
+            # Loop video if shorter than duration
+            if bg_video.duration < duration:
+                loops = int(duration / bg_video.duration) + 1
+                bg_video = concatenate_videoclips([bg_video] * loops)
+
+            # Trim to duration
+            bg_video = bg_video.subclipped(0, duration)
+
+            # Resize keeping aspect ratio then crop to 1080x1920
+            bg_video = bg_video.resized(height=1920)
+            x_center = bg_video.w / 2
+            bg_video = bg_video.cropped(
+                x1=x_center - 540,
+                x2=x_center + 540,
+                y1=0,
+                y2=1920
+            )
+
+            # Dark overlay for text readability
+            overlay = ColorClip(
+                size=(1080, 1920),
+                color=[0, 0, 0],
+                duration=duration
+            ).with_opacity(0.5)
+
+            video = CompositeVideoClip([bg_video, overlay])
+            video = video.with_audio(final_audio)
+            print("Background video loaded!")
+
+        except Exception as e:
+            print(f"Video processing failed: {e} — using static image")
+            video = None
+
+    # Fallback to static image
+    if video is None:
+        img = Image.open(image_path)
+        img_resized = img.resize((1080, 1920))
+        vertical_path = "vertical_quote.png"
+        img_resized.save(vertical_path)
+        video = ImageClip(vertical_path, duration=duration)
+        video = video.with_audio(final_audio)
+        print("Using static image fallback!")
+
+    # Step 5: Pick random animation
     animation = random.choice(ANIMATIONS)
     print(f"Animation: {animation}")
 
-    # Step 7: Add text overlays
+    # Step 6: Add text overlays
     try:
         wrapped_quote = textwrap.fill(quote, width=30)
         quote_text = f'"{wrapped_quote}"\n\n'
@@ -167,7 +250,7 @@ def create_youtube_short(quote, author, image_path):
         print("Text animations added!")
 
     except Exception as e:
-        print(f"Text animation failed: {e} — using plain video")
+        print(f"Text animation failed: {e}")
         final_video = video
 
     output_path = "youtube_short.mp4"
@@ -178,7 +261,8 @@ def create_youtube_short(quote, author, image_path):
         audio_codec="aac"
     )
 
-    for f in [audio_path, vertical_path]:
+    # Cleanup
+    for f in [audio_path, "background_video.mp4", "vertical_quote.png"]:
         if os.path.exists(f):
             os.remove(f)
 
