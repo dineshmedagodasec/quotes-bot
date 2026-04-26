@@ -1,9 +1,9 @@
 name: Post Quote to Facebook and YouTube
 on:
   schedule:
-    - cron: '30 0 * * *'    # 7:00 AM Sri Lanka (UTC+5:30)
-    - cron: '30 5 * * *'    # 12:00 PM Sri Lanka (UTC+5:30)
-    - cron: '30 12 * * *'   # 7:00 PM Sri Lanka (UTC+5:30)
+    - cron: '0 13 * * *'   # 8:00 AM US Eastern
+    - cron: '0 17 * * *'   # 12:00 PM US Eastern
+    - cron: '0 1 * * *'    # 8:00 PM US Eastern
   workflow_dispatch:
 jobs:
   post:
@@ -29,3 +29,4 @@ jobs:
           YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
           FACEBOOK_ALBUM_ID: ${{ secrets.FACEBOOK_ALBUM_ID }}
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+          HUGGINGFACE_API_KEY: ${{ secrets.HUGGINGFACE_API_KEY }}
