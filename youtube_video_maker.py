@@ -205,7 +205,7 @@ def create_youtube_short(quote, author, image_path):
         )
         hook_clip = hook_clip.with_position(("center", 200))
         hook_clip = hook_clip.with_start(0)
-        hook_clip = hook_clip.with_duration(4)
+        hook_clip = hook_clip.with_duration(10)
 
         # Quote text
         quote_clip = TextClip(
@@ -214,7 +214,7 @@ def create_youtube_short(quote, author, image_path):
             color="white",
             font="LiberationSans-Bold",
             method="caption",
-            size=(850, None),
+            size=(900, None),
             text_align="center",
             stroke_color="black",
             stroke_width=1
