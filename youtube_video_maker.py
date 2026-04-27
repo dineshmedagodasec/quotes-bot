@@ -20,16 +20,16 @@ MUSIC_FILES = [
 ANIMATIONS = ["slide_up", "slide_down", "slide_left", "bounce"]
 
 HOOKS = [
-    "Stop scrolling — this will change your day 🔥"\n\n,
-    "This quote will hit different today 💯"\n\n,
-    "You needed to hear this today 🙏"\n\n,
-    "Read this slowly... it's powerful 💪"\n\n,
-    "This one stopped me in my tracks ✨"\n\n,
-    "Share this with someone who needs it 👇"\n\n,
-    "This changed my perspective forever 🌟"\n\n,
-    "The most powerful quote you'll hear today 🔥"\n\n,
-    "Read this every morning 💪"\n\n,
-    "This will give you chills ✨"\n\n,
+    "Stop scrolling — this will change your day 🔥",
+    "This quote will hit different today 💯",
+    "You needed to hear this today 🙏",
+    "Read this slowly... it's powerful 💪",
+    "This one stopped me in my tracks ✨",
+    "Share this with someone who needs it 👇",
+    "This changed my perspective forever 🌟",
+    "The most powerful quote you'll hear today 🔥",
+    "Read this every morning 💪",
+    "This will give you chills ✨",
 ]
 
 SEARCH_KEYWORDS = [
@@ -191,7 +191,7 @@ def create_youtube_short(quote, author, image_path):
         quote_text = f'"{wrapped_quote}"\n\n'
 
         # Hook text — grabs attention in first 2 seconds
-        hook_text = random.choice(HOOKS)
+        hook_text = random.choice(HOOKS)\n\n
         hook_clip = TextClip(
             text=hook_text,
             font_size=45,
