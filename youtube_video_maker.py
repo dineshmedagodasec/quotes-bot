@@ -191,12 +191,12 @@ def create_youtube_short(quote, author, image_path):
         quote_text = f'"{wrapped_quote}"\n\n'
 
         # Hook text — grabs attention in first 2 seconds
-        hook_text = random.choice(HOOKS)
+        hook_text = random.choice(HOOKS) + "\n\n"
         hook_clip = TextClip(
             text=hook_text,
             font_size=45,
             color="#FFD700",
-            font="LiberationSans-Bold",
+            font="DejaVuSans",
             method="caption",
             size=(750, None),
             text_align="center",
