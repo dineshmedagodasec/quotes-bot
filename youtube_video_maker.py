@@ -192,8 +192,8 @@ def create_youtube_short(quote, author, image_path):
 
         # Hook text — grabs attention in first 2 seconds
         hook_text = random.choice(HOOKS)
-        hook_clip = TextClip(
-            text=hook_text\n\n,
+        hook_clip = TextClip\n\n
+            text=hook_text,
             font_size=45,
             color="#FFD700",
             font="LiberationSans-Bold",
