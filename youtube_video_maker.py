@@ -19,6 +19,19 @@ MUSIC_FILES = [
 
 ANIMATIONS = ["slide_up", "slide_down", "slide_left", "bounce"]
 
+HOOKS = [
+    "Stop scrolling — this will change your day 🔥",
+    "This quote will hit different today 💯",
+    "You needed to hear this today 🙏",
+    "Read this slowly... it's powerful 💪",
+    "This one stopped me in my tracks ✨",
+    "Share this with someone who needs it 👇",
+    "This changed my perspective forever 🌟",
+    "The most powerful quote you'll hear today 🔥",
+    "Read this every morning 💪",
+    "This will give you chills ✨",
+]
+
 SEARCH_KEYWORDS = [
     "nature sunset",
     "ocean waves",
@@ -44,27 +57,22 @@ def get_pexels_video(quote):
         response = requests.get(url, headers=headers)
         data = response.json()
         videos = data.get("videos", [])
-
         if not videos:
-            print("No videos found")
             return None
 
         video = random.choice(videos)
         video_files = video.get("video_files", [])
-
         best_file = None
         for vf in video_files:
             if vf.get("quality") in ["hd", "sd"]:
                 best_file = vf
                 break
-
         if not best_file and video_files:
             best_file = video_files[0]
 
         if best_file:
-            video_url = best_file["link"]
             print(f"Downloading video...")
-            video_response = requests.get(video_url, stream=True)
+            video_response = requests.get(best_file["link"], stream=True)
             video_path = "background_video.mp4"
             with open(video_path, "wb") as f:
                 for chunk in video_response.iter_content(chunk_size=8192):
@@ -72,7 +80,7 @@ def get_pexels_video(quote):
             return video_path
 
     except Exception as e:
-        print(f"Pexels video failed: {e}")
+        print(f"Pexels failed: {e}")
         return None
 
 def apply_animation(clip, animation, base_y):
@@ -133,23 +141,17 @@ def create_youtube_short(quote, author, image_path):
         print(f"Music failed: {e}")
         final_audio = voice_clip
 
-    # Step 4: Get background video from Pexels
+    # Step 4: Get background video
     bg_video_path = get_pexels_video(quote)
     video = None
 
     if bg_video_path:
         try:
             bg_video = VideoFileClip(bg_video_path)
-
-            # Loop video if shorter than duration
             if bg_video.duration < duration:
                 loops = int(duration / bg_video.duration) + 1
                 bg_video = concatenate_videoclips([bg_video] * loops)
-
-            # Trim to duration
             bg_video = bg_video.subclipped(0, duration)
-
-            # Resize keeping aspect ratio then crop to 1080x1920
             bg_video = bg_video.resized(height=1920)
             x_center = bg_video.w / 2
             bg_video = bg_video.cropped(
@@ -158,23 +160,18 @@ def create_youtube_short(quote, author, image_path):
                 y1=0,
                 y2=1920
             )
-
-            # Dark overlay for text readability
             overlay = ColorClip(
                 size=(1080, 1920),
                 color=[0, 0, 0],
                 duration=duration
             ).with_opacity(0.5)
-
             video = CompositeVideoClip([bg_video, overlay])
             video = video.with_audio(final_audio)
             print("Background video loaded!")
-
         except Exception as e:
-            print(f"Video processing failed: {e} — using static image")
+            print(f"Video failed: {e}")
             video = None
 
-    # Fallback to static image
     if video is None:
         img = Image.open(image_path)
         img_resized = img.resize((1080, 1920))
@@ -182,7 +179,7 @@ def create_youtube_short(quote, author, image_path):
         img_resized.save(vertical_path)
         video = ImageClip(vertical_path, duration=duration)
         video = video.with_audio(final_audio)
-        print("Using static image fallback!")
+        print("Using static image!")
 
     # Step 5: Pick random animation
     animation = random.choice(ANIMATIONS)
@@ -192,6 +189,23 @@ def create_youtube_short(quote, author, image_path):
     try:
         wrapped_quote = textwrap.fill(quote, width=27)
         quote_text = f'"{wrapped_quote}"\n\n'
+
+        # Hook text — grabs attention in first 2 seconds
+        hook_text = random.choice(HOOKS)
+        hook_clip = TextClip(
+            text=hook_text,
+            font_size=38,
+            color="#FFD700",
+            font="LiberationSans-Bold",
+            method="caption",
+            size=(750, None),
+            text_align="center",
+            stroke_color="black",
+            stroke_width=1
+        )
+        hook_clip = hook_clip.with_position(("center", 200))
+        hook_clip = hook_clip.with_start(0)
+        hook_clip = hook_clip.with_duration(4)
 
         # Quote text
         quote_clip = TextClip(
@@ -227,7 +241,7 @@ def create_youtube_short(quote, author, image_path):
 
         # Channel watermark
         channel_clip = TextClip(
-            text="Follow for daily motivation!",
+            text="Subscribe for daily quotes 🔔",
             font_size=26,
             color="white",
             font="DejaVuSans",
@@ -243,6 +257,7 @@ def create_youtube_short(quote, author, image_path):
 
         final_video = CompositeVideoClip([
             video,
+            hook_clip,
             quote_clip,
             author_clip,
             channel_clip
@@ -261,7 +276,6 @@ def create_youtube_short(quote, author, image_path):
         audio_codec="aac"
     )
 
-    # Cleanup
     for f in [audio_path, "background_video.mp4", "vertical_quote.png"]:
         if os.path.exists(f):
             os.remove(f)
