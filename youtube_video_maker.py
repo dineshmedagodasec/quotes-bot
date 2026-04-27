@@ -194,7 +194,7 @@ def create_youtube_short(quote, author, image_path):
         hook_text = random.choice(HOOKS)
         hook_clip = TextClip(
             text=hook_text,
-            font_size=38,
+            font_size=45,
             color="#FFD700",
             font="LiberationSans-Bold",
             method="caption",
@@ -241,7 +241,7 @@ def create_youtube_short(quote, author, image_path):
 
         # Channel watermark
         channel_clip = TextClip(
-            text="Subscribe for daily quotes 🔔",
+            text="Subscribe for daily quotes 🔔"\n\n,
             font_size=26,
             color="white",
             font="DejaVuSans",
