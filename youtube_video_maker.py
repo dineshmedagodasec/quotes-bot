@@ -241,8 +241,8 @@ def create_youtube_short(quote, author, image_path):
 
         # Channel watermark
         channel_clip = TextClip(
-            text="Subscribe for daily quotes 🔔",
-            font_size=26,
+            text="Subscribe for daily quotes 🔔"\n\n,
+            font_size=35,
             color="white",
             font="DejaVuSans",
             method="caption",
