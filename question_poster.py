@@ -1,8 +1,4 @@
-import os
 import random
-import requests
-from youtube_poster import post_to_youtube
-from youtube_video_maker import create_youtube_short
 
 QUESTIONS = [
     {
@@ -13,7 +9,7 @@ QUESTIONS = [
     },
     {
         "hook": "FINISH THIS SENTENCE",
-        "text": "Success is not about ______, it is about ______",
+        "text": "Success is not about ______ it is about ______",
         "options": "",
         "cta": "Drop your answer below! Best answer gets featured!"
     },
@@ -50,21 +46,33 @@ QUESTIONS = [
     {
         "hook": "BE HONEST",
         "text": "How many of these quotes actually changed your life?",
-        "options": "A) None yet\nB) 1-2 quotes\nC) Many of them\nD) Every single one!",
+        "options": "A) None yet\nB) 1 to 2 quotes\nC) Many of them\nD) Every single one!",
         "cta": "Drop your answer! Follow for more!"
+    },
+    {
+        "hook": "MOTIVATIONAL QUESTION",
+        "text": "What is your biggest dream right now?",
+        "options": "",
+        "cta": "Share it below! Speaking it makes it real!"
+    },
+    {
+        "hook": "SELF REFLECTION",
+        "text": "Are you living the life you imagined 5 years ago?",
+        "options": "A) Yes and it is amazing!\nB) No but I am working on it\nC) Not yet but I will get there\nD) Still figuring it out",
+        "cta": "Be honest in the comments!"
     },
 ]
 
 def create_question_video():
     question = random.choice(QUESTIONS)
 
-    # Build the full quote text
     if question["options"]:
         quote = f"{question['text']}\n\n{question['options']}"
     else:
         quote = question["text"]
 
     author = question["cta"]
+    hook = question["hook"]
 
-    print(f"Creating question video: {question['hook']}")
-    return quote, author, question["hook"]
+    print(f"Question: {question['hook']}")
+    return quote, author, hook
