@@ -119,7 +119,7 @@ def apply_animation(clip, animation, base_y):
 def create_youtube_short(quote, author, image_path):
     # Step 1: Generate voice audio
     tts_text = f"{quote}... by {author}"
-    tts = gTTS(text=tts_text, lang='en', slow=False)
+    tts = gTTS(text=tts_text, lang='en', slow=False, tld='com.au')
     audio_path = "quote_audio.mp3"
     tts.save(audio_path)
 
