@@ -6,12 +6,23 @@ from image_maker import create_quote_image
 from facebook_poster import post_to_facebook
 from youtube_video_maker import create_youtube_short
 from youtube_poster import post_to_youtube
+from question_poster import create_question_video
 
 load_dotenv()
 
+def is_question_time():
+    utc_hour = datetime.datetime.utcnow().hour
+    # 10AM and 3PM US Eastern = 15 and 20 UTC
+    return utc_hour in [15, 20]
+
 def run_bot():
-    print("Regular quote time!")
-    quote, author = get_quote()
+    if is_question_time():
+        print("Question post time!")
+        quote, author, hook = create_question_video()
+    else:
+        print("Regular quote time!")
+        quote, author = get_quote()
+
     print(f"Quote: {quote[:50]}")
 
     print("Creating image...")
