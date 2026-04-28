@@ -20,16 +20,16 @@ MUSIC_FILES = [
 ANIMATIONS = ["slide_up", "slide_down", "slide_left", "bounce"]
 
 HOOKS = [
-    "Stop scrolling — this will change your day 🔥",
-    "This quote will hit different today 💯",
-    "You needed to hear this today 🙏",
-    "Read this slowly... it's powerful 💪",
-    "This one stopped me in my tracks ✨",
-    "Share this with someone who needs it 👇",
-    "This changed my perspective forever 🌟",
-    "The most powerful quote you'll hear today 🔥",
-    "Read this every morning 💪",
-    "This will give you chills ✨",
+    "Stop scrolling — this will change your day ",
+    "This quote will hit different today ",
+    "You needed to hear this today ",
+    "Read this slowly... it's powerful ",
+    "This one stopped me in my tracks ",
+    "Share this with someone who needs it ",
+    "This changed my perspective forever ",
+    "The most powerful quote you'll hear today ",
+    "Read this every morning ",
+    "This will give you chills ",
 ]
 
 SEARCH_KEYWORDS = [
@@ -244,14 +244,14 @@ def create_youtube_short(quote, author, image_path):
             text="Subscribe for daily quotes \n\n",
             font_size=35,
             color="white",
-            font="DejaVuSans",
+            font="DejaVuSans-Bold",
             method="caption",
             size=(550, None),
             text_align="center",
             stroke_color="black",
             stroke_width=1
         )
-        channel_clip = channel_clip.with_position(("center", 1780))
+        channel_clip = channel_clip.with_position(("center", 1650))
         channel_clip = channel_clip.with_start(0)
         channel_clip = channel_clip.with_duration(duration)
 
