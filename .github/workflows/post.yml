@@ -1,9 +1,11 @@
 name: Post Quote to Facebook and YouTube
 on:
   schedule:
-    - cron: '0 13 * * *'   # 8:00 AM US Eastern
-    - cron: '0 17 * * *'   # 12:00 PM US Eastern
-    - cron: '0 1 * * *'    # 8:00 PM US Eastern
+    - cron: '0 13 * * *'    # 8:00 AM US Eastern - Quote
+    - cron: '0 15 * * *'    # 10:00 AM US Eastern - Question
+    - cron: '0 17 * * *'    # 12:00 PM US Eastern - Quote
+    - cron: '0 20 * * *'    # 3:00 PM US Eastern - Question
+    - cron: '0 1 * * *'     # 8:00 PM US Eastern - Quote
   workflow_dispatch:
 jobs:
   post:
