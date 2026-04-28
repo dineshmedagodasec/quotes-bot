@@ -20,16 +20,16 @@ MUSIC_FILES = [
 ANIMATIONS = ["slide_up", "slide_down", "slide_left", "bounce"]
 
 HOOKS = [
-    "Stop scrolling — this will change your day 🔥\n\n",
-    "This quote will hit different today 💯\n\n",
-    "You needed to hear this today 🙏\n\n",
-    "Read this slowly... it's powerful 💪\n\n",
-    "This one stopped me in my tracks ✨\n\n",
-    "Share this with someone who needs it 👇\n\n",
-    "This changed my perspective forever 🌟\n\n",
-    "The most powerful quote you'll hear today 🔥\n\n",
-    "Read this every morning 💪\n\n",
-    "This will give you chills ✨\n\n",
+    "Stop scrolling - this will change your day\n\n",
+    "This quote will hit different today\n\n",
+    "You needed to hear this today\n\n",
+    "Read this slowly... it is powerful\n\n",
+    "This one stopped me in my tracks\n\n",
+    "Share this with someone who needs it\n\n",
+    "This changed my perspective forever\n\n",
+    "The most powerful quote you will hear today\n\n",
+    "Read this every morning\n\n",
+    "This will give you chills\n\n",
 ]
 
 SEARCH_KEYWORDS = [
@@ -205,7 +205,7 @@ def create_youtube_short(quote, author, image_path):
         )
         hook_clip = hook_clip.with_position(("center", 200))
         hook_clip = hook_clip.with_start(0)
-        hook_clip = hook_clip.with_duration(6)
+        hook_clip = hook_clip.with_duration(10)
 
         # Quote text
         quote_clip = TextClip(
@@ -241,7 +241,7 @@ def create_youtube_short(quote, author, image_path):
 
         # Subscribe watermark
         channel_clip = TextClip(
-            text="Subscribe for daily quotes 🔔",
+            text="Subscribe for daily quotes\n\n",
             font_size=26,
             color="white",
             font="DejaVuSans-Bold",
@@ -251,7 +251,7 @@ def create_youtube_short(quote, author, image_path):
             stroke_color="black",
             stroke_width=1
         )
-        channel_clip = channel_clip.with_position(("center", 1700))
+        channel_clip = channel_clip.with_position(("center", 1650))
         channel_clip = channel_clip.with_start(0)
         channel_clip = channel_clip.with_duration(duration)
 
