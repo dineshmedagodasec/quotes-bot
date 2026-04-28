@@ -246,7 +246,7 @@ def create_youtube_short(quote, author, image_path):
             color="white",
             font="DejaVuSans",
             method="caption",
-            size=(700, None),
+            size=(550, None),
             text_align="center",
             stroke_color="black",
             stroke_width=1
