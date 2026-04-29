@@ -11,9 +11,7 @@ from question_poster import create_question_video
 load_dotenv()
 
 def is_question_time():
-    utc_hour = datetime.datetime.utcnow().hour
-    # 10AM and 3PM US Eastern = 15 and 20 UTC
-    return utc_hour in [15, 20]
+    return True  # Temporary test
 
 def run_bot():
     if is_question_time():
