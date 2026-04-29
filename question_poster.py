@@ -3,62 +3,62 @@ import random
 QUESTIONS = [
     {
         "hook": "QUICK QUESTION",
-        "text": "Which type of motivation works best for you?",
-        "options": "A) Morning quotes\nB) Success stories\nC) Personal challenges\nD) Music",
+        "text": "Which type of motivation\nworks best for you?\n",
+        "options": "A) Morning quotes\n\nB) Success stories\n\nC) Personal challenges\n\nD) Music\n",
         "cta": "Comment A, B, C or D below!"
     },
     {
         "hook": "FINISH THIS SENTENCE",
-        "text": "Success is not about ______ it is about ______",
+        "text": "Success is not about ______\nit is about ______\n",
         "options": "",
-        "cta": "Drop your answer below! Best answer gets featured!"
+        "cta": "Drop your answer below!\nBest answer gets featured!"
     },
     {
         "hook": "DAILY QUESTION",
-        "text": "What is ONE thing you would tell your younger self?",
+        "text": "What is ONE thing you would\ntell your younger self?\n",
         "options": "",
-        "cta": "Share your story below! Every comment gets a reply!"
+        "cta": "Share your story below!\nEvery comment gets a reply!"
     },
     {
         "hook": "THIS OR THAT",
-        "text": "What do you value more?",
-        "options": "A) Money and success\nB) Peace and happiness",
-        "cta": "Comment A or B! Share with someone who needs this!"
+        "text": "What do you value more?\n",
+        "options": "A) Money and success\n\nB) Peace and happiness\n",
+        "cta": "Comment A or B!\nShare with someone who needs this!"
     },
     {
         "hook": "THINK ABOUT THIS",
-        "text": "When was the last time you did something for the FIRST time?",
+        "text": "When was the last time you did\nsomething for the FIRST time?\n",
         "options": "",
-        "cta": "Share below! Follow for daily motivation!"
+        "cta": "Share below!\nFollow for daily motivation!"
     },
     {
         "hook": "VOTE NOW",
-        "text": "What stops you from reaching your goals?",
-        "options": "A) Fear of failure\nB) Lack of motivation\nC) No clear plan\nD) Other",
+        "text": "What stops you from\nreaching your goals?\n",
+        "options": "A) Fear of failure\n\nB) Lack of motivation\n\nC) No clear plan\n\nD) Other\n",
         "cta": "Comment your answer below!"
     },
     {
         "hook": "QUICK POLL",
-        "text": "Are you a morning person or night owl?",
-        "options": "A) Morning person - rise and grind!\nB) Night owl - best work after midnight!",
-        "cta": "Comment A or B! Tag a friend!"
+        "text": "Are you a morning person\nor night owl?\n",
+        "options": "A) Morning person\n   rise and grind!\n\nB) Night owl\n   best work after midnight!\n",
+        "cta": "Comment A or B!\nTag a friend!"
     },
     {
         "hook": "BE HONEST",
-        "text": "How many of these quotes actually changed your life?",
-        "options": "A) None yet\nB) 1 to 2 quotes\nC) Many of them\nD) Every single one!",
-        "cta": "Drop your answer! Follow for more!"
+        "text": "How many quotes actually\nchanged your life?\n",
+        "options": "A) None yet\n\nB) 1 to 2 quotes\n\nC) Many of them\n\nD) Every single one!\n",
+        "cta": "Drop your answer!\nFollow for more!"
     },
     {
         "hook": "MOTIVATIONAL QUESTION",
-        "text": "What is your biggest dream right now?",
+        "text": "What is your biggest\ndream right now?\n",
         "options": "",
-        "cta": "Share it below! Speaking it makes it real!"
+        "cta": "Share it below!\nSpeaking it makes it real!"
     },
     {
         "hook": "SELF REFLECTION",
-        "text": "Are you living the life you imagined 5 years ago?",
-        "options": "A) Yes and it is amazing!\nB) No but I am working on it\nC) Not yet but I will get there\nD) Still figuring it out",
+        "text": "Are you living the life you\nimagined 5 years ago?\n",
+        "options": "A) Yes and it is amazing!\n\nB) No but I am working on it\n\nC) Not yet but I will get there\n\nD) Still figuring it out\n",
         "cta": "Be honest in the comments!"
     },
 ]
@@ -67,7 +67,7 @@ def create_question_video():
     question = random.choice(QUESTIONS)
 
     if question["options"]:
-        quote = f"{question['text']}\n\n{question['options']}"
+        quote = f"{question['text']}\n{question['options']}"
     else:
         quote = question["text"]
 
