@@ -187,8 +187,8 @@ def create_youtube_short(quote, author, image_path):
 
     # Step 6: Add text overlays
     try:
-        wrapped_quote = textwrap.fill(quote, width=27)
-        quote_text = f'"{wrapped_quote}"\n\n'
+        # Don't rewrap questions - keep manual line breaks
+        quote_text = f'"{quote}"\n\n'
 
         # Hook text
         hook_text = random.choice(HOOKS)
