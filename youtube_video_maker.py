@@ -20,16 +20,16 @@ MUSIC_FILES = [
 ANIMATIONS = ["slide_up", "slide_down", "slide_left", "bounce"]
 
 HOOKS = [
-    "Stop scrolling — this will change your day \n\n",
-    "This quote will hit different today \n\n",
-    "You needed to hear this today \n\n",
-    "Read this slowly... it's powerful \n\n",
-    "This one stopped me in my tracks \n\n",
-    "Share this with someone who needs it \n\n",
-    "This changed my perspective forever \n\n",
-    "The most powerful quote you'll hear today \n\n",
-    "Read this every morning \n\n",
-    "This will give you chills \n\n",
+    "Stop scrolling - this will change your day\n\n",
+    "This quote will hit different today\n\n",
+    "You needed to hear this today\n\n",
+    "Read this slowly... it is powerful\n\n",
+    "This one stopped me in my tracks\n\n",
+    "Share this with someone who needs it\n\n",
+    "This changed my perspective forever\n\n",
+    "The most powerful quote you will hear today\n\n",
+    "Read this every morning\n\n",
+    "This will give you chills\n\n",
 ]
 
 SEARCH_KEYWORDS = [
@@ -187,8 +187,16 @@ def create_youtube_short(quote, author, image_path):
 
     # Step 6: Add text overlays
     try:
-        # Don't rewrap questions - keep manual line breaks
-        quote_text = f'"{quote}"\n\n'
+        # Smart wrapping preserving manual line breaks
+        lines = quote.split('\n')
+        wrapped_lines = []
+        for line in lines:
+            if len(line) > 25:
+                wrapped = textwrap.fill(line, width=25)
+                wrapped_lines.append(wrapped)
+            else:
+                wrapped_lines.append(line)
+        quote_text = '\n'.join(wrapped_lines) + '\n\n'
 
         # Hook text
         hook_text = random.choice(HOOKS)
@@ -207,10 +215,16 @@ def create_youtube_short(quote, author, image_path):
         hook_clip = hook_clip.with_start(0)
         hook_clip = hook_clip.with_duration(10)
 
+        # Choose font size based on content length
+        if len(quote) > 100:
+            q_font_size = 40
+        else:
+            q_font_size = 55
+
         # Quote text
         quote_clip = TextClip(
             text=quote_text,
-            font_size=55,
+            font_size=q_font_size,
             color="white",
             font="LiberationSans-Bold",
             method="caption",
@@ -241,7 +255,7 @@ def create_youtube_short(quote, author, image_path):
 
         # Subscribe watermark
         channel_clip = TextClip(
-            text="Subscribe for daily quotes \n\n",
+            text="Subscribe for daily quotes\n\n",
             font_size=26,
             color="white",
             font="DejaVuSans-Bold",
