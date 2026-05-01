@@ -3,62 +3,62 @@ import random
 QUESTIONS = [
     {
         "hook": "QUICK QUESTION",
-        "text": "Which type of motivation\nworks best for you?\n",
-        "options": "A) Morning quotes\n\nB) Success stories\n\nC) Personal challenges\n\nD) Music\n",
+        "text": "Which type of motivation works best for you?",
+        "options": "A) Morning quotes\n\nB) Success stories\n\nC) Personal challenges\n\nD) Music",
         "cta": "Comment A, B, C or D below!"
     },
     {
         "hook": "FINISH THIS SENTENCE",
-        "text": "Success is not about ______\nit is about ______\n",
+        "text": "Success is not about ______\nit is about ______",
         "options": "",
         "cta": "Drop your answer below!\nBest answer gets featured!"
     },
     {
         "hook": "DAILY QUESTION",
-        "text": "What is ONE thing you would\ntell your younger self?\n",
+        "text": "What is ONE thing you would\ntell your younger self?",
         "options": "",
         "cta": "Share your story below!\nEvery comment gets a reply!"
     },
     {
         "hook": "THIS OR THAT",
-        "text": "What do you value more?\n",
-        "options": "A) Money and success\n\nB) Peace and happiness\n",
+        "text": "What do you value more?",
+        "options": "A) Money and success\n\nB) Peace and happiness",
         "cta": "Comment A or B!\nShare with someone who needs this!"
     },
     {
         "hook": "THINK ABOUT THIS",
-        "text": "When was the last time you did\nsomething for the FIRST time?\n",
+        "text": "When was the last time you did\nsomething for the FIRST time?",
         "options": "",
         "cta": "Share below!\nFollow for daily motivation!"
     },
     {
         "hook": "VOTE NOW",
-        "text": "What stops you from\nreaching your goals?\n",
-        "options": "A) Fear of failure\n\nB) Lack of motivation\n\nC) No clear plan\n\nD) Other\n",
+        "text": "What stops you from\nreaching your goals?",
+        "options": "A) Fear of failure\n\nB) Lack of motivation\n\nC) No clear plan\n\nD) Other",
         "cta": "Comment your answer below!"
     },
     {
         "hook": "QUICK POLL",
-        "text": "Are you a morning person\nor night owl?\n",
-        "options": "A) Morning person\n   rise and grind!\n\nB) Night owl\n   best work after midnight!\n",
+        "text": "Are you a morning person\nor a night owl?",
+        "options": "A) Morning person\nrise and grind!\n\nB) Night owl\nbest work after midnight!",
         "cta": "Comment A or B!\nTag a friend!"
     },
     {
         "hook": "BE HONEST",
-        "text": "How many quotes actually\nchanged your life?\n",
-        "options": "A) None yet\n\nB) 1 to 2 quotes\n\nC) Many of them\n\nD) Every single one!\n",
+        "text": "How many quotes actually\nchanged your life?",
+        "options": "A) None yet\n\nB) 1 to 2 quotes\n\nC) Many of them\n\nD) Every single one!",
         "cta": "Drop your answer!\nFollow for more!"
     },
     {
         "hook": "MOTIVATIONAL QUESTION",
-        "text": "What is your biggest\ndream right now?\n",
+        "text": "What is your biggest\ndream right now?",
         "options": "",
         "cta": "Share it below!\nSpeaking it makes it real!"
     },
     {
         "hook": "SELF REFLECTION",
-        "text": "Are you living the life you\nimagined 5 years ago?\n",
-        "options": "A) Yes and it is amazing!\n\nB) No but I am working on it\n\nC) Not yet but I will get there\n\nD) Still figuring it out\n",
+        "text": "Are you living the life\nyou imagined 5 years ago?",
+        "options": "A) Yes and it is amazing!\n\nB) No but I am working on it\n\nC) Not yet but I will\nget there\n\nD) Still figuring it out",
         "cta": "Be honest in the comments!"
     },
 ]
@@ -67,7 +67,7 @@ def create_question_video():
     question = random.choice(QUESTIONS)
 
     if question["options"]:
-        quote = f"{question['text']}\n{question['options']}"
+        quote = f"{question['text']}\n\n{question['options']}"
     else:
         quote = question["text"]
 
