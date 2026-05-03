@@ -1,3 +1,6 @@
 .env
 venv/
 output_quote.png
+*.env
+client_secret*.json
+credentials*.json
