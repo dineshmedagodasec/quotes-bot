@@ -12,7 +12,7 @@ TITLE_TEMPLATES = [
     "Morning Motivation That Hits Different",
     "This Quote Changed Everything #{author}",
     "Listen To This Every Morning",
-    "The Most Powerful Quote You'll Hear Today",
+    "The Most Powerful Quote You Will Hear Today",
     "This Hit Me Hard #{author}",
     "Words Of Wisdom That Will Inspire You",
     "Start Your Day With This #{author}",
@@ -51,7 +51,10 @@ Subscribe for daily motivation every morning, afternoon and evening!
 Share this with someone who needs it today!
 Comment your favorite part below!
 
-#motivation #shorts #quotes #dailymotivation #inspirationalquotes #motivationalquotes #mindset #success #inspire #lifequotes #viral #positivevibes #selfimprovement #growthmindset #dailyquotes #successquotes #wisdomquotes'''
+#motivation #shorts #quotes #dailymotivation #inspirationalquotes
+#motivationalquotes #mindset #success #inspire #lifequotes
+#viral #positivevibes #selfimprovement #growthmindset #dailyquotes
+#successquotes #wisdomquotes'''
 
 def post_to_youtube(video_path, quote, author):
     creds = google.oauth2.credentials.Credentials(
