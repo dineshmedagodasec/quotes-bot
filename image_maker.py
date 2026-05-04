@@ -30,28 +30,43 @@ def create_quote_image(quote, author):
 
     try:
         quote_font = ImageFont.truetype(
-            "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf", 52)
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 48)
         author_font = ImageFont.truetype(
-            "/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf", 36)
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 32)
     except:
         quote_font = ImageFont.load_default()
         author_font = ImageFont.load_default()
 
-    # Wrap and draw quote
-    wrapped = textwrap.fill(f'"{quote}"', width=28)
+    # Handle question posts vs regular quotes
+    lines = quote.split('\n')
+    wrapped_lines = []
+    for line in lines:
+        line = line.strip()
+        if line:
+            if len(line) > 22:
+                wrapped = textwrap.fill(line, width=22)
+                wrapped_lines.append(wrapped)
+            else:
+                wrapped_lines.append(line)
+        else:
+            wrapped_lines.append('')
+
+    full_text = '\n'.join(wrapped_lines)
+
+    # Draw text centered
     draw.multiline_text(
-        (540, 420),
-        wrapped,
+        (540, 400),
+        full_text,
         font=quote_font,
         fill="white",
         anchor="mm",
         align="center",
-        spacing=12
+        spacing=8
     )
 
     # Draw author
     draw.text(
-        (540, 680),
+        (540, 850),
         f"— {author}",
         font=author_font,
         fill="#FFD700",
@@ -63,11 +78,11 @@ def create_quote_image(quote, author):
         (540, 980),
         "Daily Dose of Motivation",
         font=author_font,
-        fill=(255, 255, 255, 180),
+        fill=(255, 255, 255),
         anchor="mm"
     )
 
-    # Save Facebook version with text
+    # Save Facebook version
     fb_path = "output_quote.png"
     bg.convert("RGB").save(fb_path)
 
