@@ -20,16 +20,16 @@ MUSIC_FILES = [
 ANIMATIONS = ["slide_up", "slide_down", "slide_left", "bounce"]
 
 HOOKS = [
-    "Stop scrolling - this will change your day\n\n",
-    "This quote will hit different today\n\n",
-    "You needed to hear this today\n\n",
-    "Read this slowly... it is powerful\n\n",
-    "This one stopped me in my tracks\n\n",
-    "Share this with someone who needs it\n\n",
-    "This changed my perspective forever\n\n",
-    "The most powerful quote you will hear today\n\n",
-    "Read this every morning\n\n",
-    "This will give you chills\n\n",
+    "WAIT... read this slowly\n\n",
+    "This will change how you think\n\n",
+    "You NEEDED to see this today\n\n",
+    "Stop scrolling. Read this.\n\n",
+    "This one hits different\n\n",
+    "Share this before you scroll\n\n",
+    "99% of people ignore this\n\n",
+    "This changed my life\n\n",
+    "Read this 3 times\n\n",
+    "Do NOT skip this\n\n",
 ]
 
 SEARCH_KEYWORDS = [
@@ -198,22 +198,22 @@ def create_youtube_short(quote, author, image_path):
                 wrapped_lines.append(line)
         quote_text = '\n'.join(wrapped_lines) + '\n\n'
 
-        # Hook text
+        # Hook text — INSTANTLY visible from frame 0
         hook_text = random.choice(HOOKS)
         hook_clip = TextClip(
             text=hook_text,
-            font_size=38,
+            font_size=42,
             color="#FFD700",
             font="DejaVuSans",
             method="caption",
             size=(750, None),
             text_align="center",
             stroke_color="black",
-            stroke_width=1
+            stroke_width=2
         )
-        hook_clip = hook_clip.with_position(("center", 200))
+        hook_clip = hook_clip.with_position(("center", 150))
         hook_clip = hook_clip.with_start(0)
-        hook_clip = hook_clip.with_duration(10)
+        hook_clip = hook_clip.with_duration(8)
 
         # Choose font size based on content length
         if len(quote) > 100:
