@@ -7,21 +7,21 @@ from googleapiclient.http import MediaFileUpload
 from thumbnail_maker import create_thumbnail
 
 TITLE_TEMPLATES = [
+    "POV You needed to hear this #{author}",
+    "That hit different #{author}",
+    "No one talks about this enough",
+    "This is why you are not succeeding yet",
+    "The harsh truth about success #{author}",
+    "Stop doing this if you want to succeed",
+    "This will hurt but you need to hear it",
+    "Why most people never succeed",
+    "The secret nobody tells you about success",
+    "This changed everything #{author}",
     "This Will Change Your Life #{author}",
     "Words That Will Give You Chills #{author}",
     "Morning Motivation That Hits Different",
-    "This Quote Changed Everything #{author}",
-    "Listen To This Every Morning",
     "The Most Powerful Quote You Will Hear Today",
-    "This Hit Me Hard #{author}",
-    "Words Of Wisdom That Will Inspire You",
-    "Start Your Day With This #{author}",
-    "This Is The Motivation You Need Today",
-    "One Quote That Will Change Your Mindset",
-    "The Truth About Success #{author}",
-    "This Quote Will Stay With You Forever",
     "Powerful Words For A Powerful Life",
-    "When You Need Motivation Watch This",
 ]
 
 TAGS = [
@@ -45,16 +45,16 @@ def get_description(quote, author):
     return f'''"{quote}"
 — {author}
 
-{day} Motivation — Follow for daily quotes that inspire!
+Comment YES if this hit different!
+Tag someone who needs to hear this today!
 
-Subscribe for daily motivation every morning, afternoon and evening!
-Share this with someone who needs it today!
-Comment your favorite part below!
+{day} Motivation — Subscribe for daily quotes!
+New videos every morning, afternoon and evening!
 
-#motivation #shorts #quotes #dailymotivation #inspirationalquotes
-#motivationalquotes #mindset #success #inspire #lifequotes
-#viral #positivevibes #selfimprovement #growthmindset #dailyquotes
-#successquotes #wisdomquotes'''
+#motivation #shorts #quotes #dailymotivation
+#inspirationalquotes #motivationalquotes #mindset
+#success #inspire #lifequotes #viral #positivevibes
+#selfimprovement #growthmindset #successquotes'''
 
 def post_to_youtube(video_path, quote, author):
     creds = google.oauth2.credentials.Credentials(
