@@ -6,6 +6,41 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 from thumbnail_maker import create_thumbnail
 
+# Big hashtags
+BIG_TAGS = [
+    "motivation", "shorts", "quotes", "viral",
+    "inspirationalquotes", "motivationalquotes",
+    "success", "mindset", "inspire", "lifequotes",
+]
+
+# Medium hashtags
+MEDIUM_TAGS = [
+    "dailymotivation", "positivevibes", "selfimprovement",
+    "growthmindset", "dailyquotes", "successquotes",
+    "wisdomquotes", "morningmotivation", "motivationaldaily",
+    "quoteoftheday",
+]
+
+# Small niche hashtags
+SMALL_TAGS = [
+    "dailyquotesforlife", "motivationforlife",
+    "quotestoinspire", "shortsmotivation",
+    "motivationalshorts", "quotesdaily",
+    "lifeinspiration", "successmindset",
+    "positivequotes", "inspirationoftheday",
+]
+
+# Day specific hashtags
+DAY_TAGS = {
+    "Monday": ["mondaymotivation", "mondaymindset", "newweek"],
+    "Tuesday": ["tuesdaymotivation", "tuesdaythoughts"],
+    "Wednesday": ["wednesdaywisdom", "midweek"],
+    "Thursday": ["thursdaythoughts", "thursdaymotivation"],
+    "Friday": ["fridaymotivation", "fridayfeeling", "tgif"],
+    "Saturday": ["saturdaymotivation", "weekend"],
+    "Sunday": ["sundaymotivation", "sundayvibes", "newweek"],
+}
+
 TITLE_TEMPLATES = [
     "POV You needed to hear this #{author}",
     "That hit different #{author}",
@@ -42,6 +77,16 @@ def get_seo_title(quote, author):
 
 def get_description(quote, author):
     day = datetime.datetime.now().strftime("%A")
+
+    # Pick random mix of hashtags
+    selected_big = random.sample(BIG_TAGS, 5)
+    selected_medium = random.sample(MEDIUM_TAGS, 5)
+    selected_small = random.sample(SMALL_TAGS, 4)
+    selected_day = DAY_TAGS.get(day, ["motivation"])
+
+    all_hashtags = selected_big + selected_medium + selected_small + selected_day
+    hashtag_string = ' '.join([f"#{tag}" for tag in all_hashtags])
+
     return f'''"{quote}"
 — {author}
 
@@ -49,12 +94,9 @@ Comment YES if this hit different!
 Tag someone who needs to hear this today!
 
 {day} Motivation — Subscribe for daily quotes!
-New videos every morning, afternoon and evening!
+New videos every morning afternoon and evening!
 
-#motivation #shorts #quotes #dailymotivation
-#inspirationalquotes #motivationalquotes #mindset
-#success #inspire #lifequotes #viral #positivevibes
-#selfimprovement #growthmindset #successquotes'''
+{hashtag_string}'''
 
 def post_to_youtube(video_path, quote, author):
     creds = google.oauth2.credentials.Credentials(
