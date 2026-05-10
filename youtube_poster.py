@@ -78,7 +78,6 @@ def get_seo_title(quote, author):
 def get_description(quote, author):
     day = datetime.datetime.now().strftime("%A")
 
-    # Pick random mix of hashtags
     selected_big = random.sample(BIG_TAGS, 5)
     selected_medium = random.sample(MEDIUM_TAGS, 5)
     selected_small = random.sample(SMALL_TAGS, 4)
@@ -97,6 +96,44 @@ Tag someone who needs to hear this today!
 New videos every morning afternoon and evening!
 
 {hashtag_string}'''
+
+def add_to_playlist(youtube, video_id, quote, author):
+    playlist_id = None
+    quote_lower = quote.lower()
+    day = datetime.datetime.now().strftime("%A")
+
+    if "?" in quote or "A)" in quote:
+        playlist_id = os.getenv("YT_PLAYLIST_QUESTIONS")
+    elif day in ["Monday", "Tuesday", "Wednesday"]:
+        playlist_id = os.getenv("YT_PLAYLIST_MOTIVATION")
+    elif any(word in quote_lower for word in
+             ["success", "achieve", "win", "goal",
+              "work", "hustle", "dream"]):
+        playlist_id = os.getenv("YT_PLAYLIST_SUCCESS")
+    elif any(word in quote_lower for word in
+             ["life", "live", "change", "world",
+              "love", "heart", "soul"]):
+        playlist_id = os.getenv("YT_PLAYLIST_LIFE")
+    else:
+        playlist_id = os.getenv("YT_PLAYLIST_MORNING")
+
+    if playlist_id:
+        try:
+            youtube.playlistItems().insert(
+                part="snippet",
+                body={
+                    "snippet": {
+                        "playlistId": playlist_id,
+                        "resourceId": {
+                            "kind": "youtube#video",
+                            "videoId": video_id
+                        }
+                    }
+                }
+            ).execute()
+            print(f"Added to playlist!")
+        except Exception as e:
+            print(f"Playlist add failed: {e}")
 
 def post_to_youtube(video_path, quote, author):
     creds = google.oauth2.credentials.Credentials(
@@ -137,6 +174,10 @@ def post_to_youtube(video_path, quote, author):
     response = request.execute()
     video_id = response.get("id")
     print(f"Video uploaded: {video_id}")
+
+    # Add to playlist
+    if video_id:
+        add_to_playlist(youtube, video_id, quote, author)
 
     # Upload custom thumbnail
     if video_id:
