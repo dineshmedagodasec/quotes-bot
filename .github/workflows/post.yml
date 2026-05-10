@@ -34,3 +34,8 @@ jobs:
           FACEBOOK_ALBUM_ID: ${{ secrets.FACEBOOK_ALBUM_ID }}
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
           HUGGINGFACE_API_KEY: ${{ secrets.HUGGINGFACE_API_KEY }}
+          YT_PLAYLIST_MOTIVATION: ${{ secrets.YT_PLAYLIST_MOTIVATION }}
+          YT_PLAYLIST_SUCCESS: ${{ secrets.YT_PLAYLIST_SUCCESS }}
+          YT_PLAYLIST_LIFE: ${{ secrets.YT_PLAYLIST_LIFE }}
+          YT_PLAYLIST_MORNING: ${{ secrets.YT_PLAYLIST_MORNING }}
+          YT_PLAYLIST_QUESTIONS: ${{ secrets.YT_PLAYLIST_QUESTIONS }}
