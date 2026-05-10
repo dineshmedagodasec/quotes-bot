@@ -269,12 +269,46 @@ def create_youtube_short(quote, author, image_path):
         channel_clip = channel_clip.with_start(0)
         channel_clip = channel_clip.with_duration(duration)
 
+        # End screen CTA — appears in last 5 seconds
+        end_screen_clip = TextClip(
+            text="NEW VIDEO EVERY DAY\nSubscribe Now\n",
+            font_size=48,
+            color="#FFD700",
+            font="DejaVuSans-Bold",
+            method="caption",
+            size=(750, None),
+            text_align="center",
+            stroke_color="black",
+            stroke_width=2
+        )
+        end_screen_clip = end_screen_clip.with_position(("center", 800))
+        end_screen_clip = end_screen_clip.with_start(duration - 5)
+        end_screen_clip = end_screen_clip.with_duration(5)
+
+        # Bell reminder
+        bell_clip = TextClip(
+            text="Turn on notifications\nso you never miss a quote\n",
+            font_size=32,
+            color="white",
+            font="DejaVuSans",
+            method="caption",
+            size=(700, None),
+            text_align="center",
+            stroke_color="black",
+            stroke_width=1
+        )
+        bell_clip = bell_clip.with_position(("center", 1100))
+        bell_clip = bell_clip.with_start(duration - 5)
+        bell_clip = bell_clip.with_duration(5)
+
         final_video = CompositeVideoClip([
             video,
             hook_clip,
             quote_clip,
             author_clip,
-            channel_clip
+            channel_clip,
+            end_screen_clip,
+            bell_clip
         ])
         print("Text animations added!")
 
