@@ -39,3 +39,5 @@ jobs:
           YT_PLAYLIST_LIFE: ${{ secrets.YT_PLAYLIST_LIFE }}
           YT_PLAYLIST_MORNING: ${{ secrets.YT_PLAYLIST_MORNING }}
           YT_PLAYLIST_QUESTIONS: ${{ secrets.YT_PLAYLIST_QUESTIONS }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO_NAME: dineshmedagodasec/quotes-bot
