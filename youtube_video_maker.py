@@ -1,7 +1,8 @@
 from moviepy import VideoFileClip, AudioFileClip, CompositeAudioClip, TextClip, CompositeVideoClip, ColorClip, concatenate_videoclips, ImageClip
 from moviepy.audio.fx import MultiplyVolume
 from PIL import Image
-from gtts import gTTS
+import edge_tts
+import asyncio
 import os
 import random
 import textwrap
@@ -43,6 +44,15 @@ SEARCH_KEYWORDS = [
     "stars night sky",
     "flowers blooming",
     "river flowing"
+]
+
+# Best voices for motivation content
+VOICES = [
+    "en-US-GuyNeural",
+    "en-GB-RyanNeural",
+    "en-AU-WilliamNeural",
+    "en-US-AriaNeural",
+    "en-GB-SoniaNeural",
 ]
 
 def get_pexels_video(quote):
@@ -116,12 +126,26 @@ def apply_animation(clip, animation, base_y):
         clip = clip.with_position(("center", base_y))
     return clip
 
+async def generate_voice(text, voice, output_path):
+    communicate = edge_tts.Communicate(text, voice)
+    await communicate.save(output_path)
+
 def create_youtube_short(quote, author, image_path):
-    # Step 1: Generate voice audio
+    # Step 1: Generate voice audio with Edge TTS
+    selected_voice = random.choice(VOICES)
+    print(f"Voice: {selected_voice}")
+
     tts_text = f"{quote}... by {author}"
-    tts = gTTS(text=tts_text, lang='en', slow=False, tld='com.au')
     audio_path = "quote_audio.mp3"
-    tts.save(audio_path)
+
+    try:
+        asyncio.run(generate_voice(tts_text, selected_voice, audio_path))
+        print("Edge TTS voice generated!")
+    except Exception as e:
+        print(f"Edge TTS failed: {e} — using gTTS fallback")
+        from gtts import gTTS
+        tts = gTTS(text=tts_text, lang='en', slow=False, tld='com.au')
+        tts.save(audio_path)
 
     # Step 2: Load voice audio
     voice_clip = AudioFileClip(audio_path)
@@ -187,7 +211,6 @@ def create_youtube_short(quote, author, image_path):
 
     # Step 6: Add text overlays
     try:
-        # Smart wrapping preserving manual line breaks
         lines = quote.split('\n')
         wrapped_lines = []
         for line in lines:
@@ -198,7 +221,7 @@ def create_youtube_short(quote, author, image_path):
                 wrapped_lines.append(line)
         quote_text = '\n'.join(wrapped_lines) + '\n\n'
 
-        # Hook text — INSTANTLY visible from frame 0
+        # Hook text
         hook_text = random.choice(HOOKS)
         hook_clip = TextClip(
             text=hook_text,
@@ -215,7 +238,6 @@ def create_youtube_short(quote, author, image_path):
         hook_clip = hook_clip.with_start(0)
         hook_clip = hook_clip.with_duration(8)
 
-        # Choose font size based on content length
         if len(quote) > 100:
             q_font_size = 40
         else:
@@ -269,7 +291,7 @@ def create_youtube_short(quote, author, image_path):
         channel_clip = channel_clip.with_start(0)
         channel_clip = channel_clip.with_duration(duration)
 
-        # End screen CTA — appears in last 5 seconds
+        # End screen CTA
         end_screen_clip = TextClip(
             text="NEW VIDEO EVERY DAY\nSubscribe Now\n",
             font_size=48,
