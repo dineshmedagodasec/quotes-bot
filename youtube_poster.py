@@ -250,20 +250,4 @@ def post_to_youtube(video_path, quote, author):
         except Exception as e:
             print(f"Thumbnail upload failed: {e}")
 
-    # Post community poll every 3rd video
-    try:
-        post_count_file = "post_count.txt"
-        count = 0
-        if os.path.exists(post_count_file):
-            with open(post_count_file, "r") as f:
-                count = int(f.read().strip())
-        count += 1
-        with open(post_count_file, "w") as f:
-            f.write(str(count))
-        if count % 3 == 0:
-            print("Posting community poll...")
-            post_community_poll(youtube)
-    except Exception as e:
-        print(f"Poll count failed: {e}")
-
     return response
