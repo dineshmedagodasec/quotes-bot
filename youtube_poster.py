@@ -68,6 +68,37 @@ TAGS = [
     "shortsvideo", "youtubeshortsquotes"
 ]
 
+COMMUNITY_POLLS = [
+    {
+        "text": "What time do you watch motivation videos?",
+        "choices": ["Morning - rise and grind!", "Afternoon break", "Evening wind down", "Late night hustle"]
+    },
+    {
+        "text": "What stops you from reaching your goals?",
+        "choices": ["Fear of failure", "Lack of motivation", "No clear plan", "Other"]
+    },
+    {
+        "text": "Which quote type hits different for you?",
+        "choices": ["Success quotes", "Life wisdom quotes", "Love and relationships", "Hustle and grind"]
+    },
+    {
+        "text": "How do you start your morning?",
+        "choices": ["Motivation videos", "Exercise", "Meditation", "Just coffee!"]
+    },
+    {
+        "text": "What is your biggest goal right now?",
+        "choices": ["Financial freedom", "Better health", "Better relationships", "Personal growth"]
+    },
+    {
+        "text": "How many motivational videos do you watch daily?",
+        "choices": ["1-2 videos", "3-5 videos", "5+ videos", "First time here!"]
+    },
+    {
+        "text": "Which day do you need motivation most?",
+        "choices": ["Monday - hardest day!", "Wednesday - mid week slump", "Friday - almost there!", "Everyday!"]
+    },
+]
+
 def get_seo_title(quote, author):
     template = random.choice(TITLE_TEMPLATES)
     title = template.replace("#{author}", author)
@@ -135,6 +166,32 @@ def add_to_playlist(youtube, video_id, quote, author):
         except Exception as e:
             print(f"Playlist add failed: {e}")
 
+def post_community_poll(youtube):
+    try:
+        poll = random.choice(COMMUNITY_POLLS)
+        print(f"Posting community poll: {poll['text']}")
+
+        youtube.communityPosts().insert(
+            part="snippet",
+            body={
+                "snippet": {
+                    "type": "pollPost",
+                    "pollPost": {
+                        "question": {
+                            "text": poll["text"]
+                        },
+                        "choices": [
+                            {"text": choice} for choice in poll["choices"]
+                        ]
+                    }
+                }
+            }
+        ).execute()
+        print("Community poll posted!")
+
+    except Exception as e:
+        print(f"Community poll failed: {e}")
+
 def post_to_youtube(video_path, quote, author):
     creds = google.oauth2.credentials.Credentials(
         token=None,
@@ -192,5 +249,21 @@ def post_to_youtube(video_path, quote, author):
                 os.remove(thumbnail_path)
         except Exception as e:
             print(f"Thumbnail upload failed: {e}")
+
+    # Post community poll every 3rd video
+    try:
+        post_count_file = "post_count.txt"
+        count = 0
+        if os.path.exists(post_count_file):
+            with open(post_count_file, "r") as f:
+                count = int(f.read().strip())
+        count += 1
+        with open(post_count_file, "w") as f:
+            f.write(str(count))
+        if count % 3 == 0:
+            print("Posting community poll...")
+            post_community_poll(youtube)
+    except Exception as e:
+        print(f"Poll count failed: {e}")
 
     return response
