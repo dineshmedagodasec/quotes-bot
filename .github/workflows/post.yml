@@ -21,7 +21,7 @@ jobs:
           python-version: '3.11'
       - name: Install dependencies
         run: |
-          pip install requests Pillow python-dotenv moviepy gTTS google-api-python-client google-auth-httplib2 google-auth-oauthlib
+          pip install requests Pillow python-dotenv moviepy gTTS edge-tts google-api-python-client google-auth-httplib2 google-auth-oauthlib
       - name: Run bot
         run: python main.py
         env:
