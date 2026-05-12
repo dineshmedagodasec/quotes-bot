@@ -29,13 +29,18 @@ def run_bot():
     print(f"Facebook image: {fb_image_path}")
     print(f"YouTube image: {yt_image_path}")
 
-    print("Posting to Facebook...")
-    fb_result = post_to_facebook(fb_image_path, quote, author)
-    print(f"Facebook done: {fb_result}")
-
     print("Creating YouTube Short...")
     video_path = create_youtube_short(quote, author, yt_image_path)
     print(f"Video created: {video_path}")
+
+    print("Posting to Facebook...")
+    fb_result = post_to_facebook(
+        fb_image_path,
+        quote,
+        author,
+        video_path=video_path  # Pass video for Reel posting
+    )
+    print(f"Facebook done: {fb_result}")
 
     print("Uploading to YouTube...")
     yt_result = post_to_youtube(video_path, quote, author)
