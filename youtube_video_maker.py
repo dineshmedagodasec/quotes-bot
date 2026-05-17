@@ -46,7 +46,6 @@ SEARCH_KEYWORDS = [
     "river flowing"
 ]
 
-# Best voices for motivation content
 VOICES = [
     "en-US-GuyNeural",
     "en-GB-RyanNeural",
@@ -131,7 +130,7 @@ async def generate_voice(text, voice, output_path):
     await communicate.save(output_path)
 
 def create_youtube_short(quote, author, image_path):
-    # Step 1: Generate voice audio with Edge TTS
+    # Step 1: Generate voice
     selected_voice = random.choice(VOICES)
     print(f"Voice: {selected_voice}")
 
@@ -142,14 +141,14 @@ def create_youtube_short(quote, author, image_path):
         asyncio.run(generate_voice(tts_text, selected_voice, audio_path))
         print("Edge TTS voice generated!")
     except Exception as e:
-        print(f"Edge TTS failed: {e} — using gTTS fallback")
+        print(f"Edge TTS failed: {e}")
         from gtts import gTTS
         tts = gTTS(text=tts_text, lang='en', slow=False, tld='com.au')
         tts.save(audio_path)
 
     # Step 2: Load voice audio
     voice_clip = AudioFileClip(audio_path)
-    duration = max(voice_clip.duration + 2, 30)
+    duration = max(voice_clip.duration + 15, 35)
     duration = min(duration, 59)
 
     # Step 3: Pick random music
@@ -209,7 +208,7 @@ def create_youtube_short(quote, author, image_path):
     animation = random.choice(ANIMATIONS)
     print(f"Animation: {animation}")
 
-    # Step 6: Add text overlays
+    # Step 6: Add text overlays with countdown
     try:
         lines = quote.split('\n')
         wrapped_lines = []
@@ -220,6 +219,8 @@ def create_youtube_short(quote, author, image_path):
             else:
                 wrapped_lines.append(line)
         quote_text = '\n'.join(wrapped_lines) + '\n\n'
+
+        clips = [video]
 
         # Hook text
         hook_text = random.choice(HOOKS)
@@ -237,13 +238,57 @@ def create_youtube_short(quote, author, image_path):
         hook_clip = hook_clip.with_position(("center", 150))
         hook_clip = hook_clip.with_start(0)
         hook_clip = hook_clip.with_duration(8)
+        clips.append(hook_clip)
 
+        # Countdown 5 to 1
+        countdown_colors = [
+            "#FF0000",
+            "#FF4500",
+            "#FF8C00",
+            "#FFD700",
+            "#00FF00",
+        ]
+
+        countdown_start = 1
+        for i, number in enumerate(["5", "4", "3", "2", "1"]):
+            num_clip = TextClip(
+                text=number,
+                font_size=350,
+                color=countdown_colors[i],
+                font="LiberationSans-Bold",
+                method="label",
+                text_align="center",
+                stroke_color="black",
+                stroke_width=10
+            )
+            num_clip = num_clip.with_position(("center", 650))
+            num_clip = num_clip.with_start(countdown_start + i * 1.5)
+            num_clip = num_clip.with_duration(1.5)
+            clips.append(num_clip)
+
+        # GO!
+        go_clip = TextClip(
+            text="GO!",
+            font_size=280,
+            color="#00FF00",
+            font="LiberationSans-Bold",
+            method="label",
+            text_align="center",
+            stroke_color="black",
+            stroke_width=10
+        )
+        go_clip = go_clip.with_position(("center", 700))
+        go_clip = go_clip.with_start(countdown_start + 5 * 1.5)
+        go_clip = go_clip.with_duration(1.5)
+        clips.append(go_clip)
+
+        # Quote appears after countdown
+        quote_start = countdown_start + 5 * 1.5 + 1.5
         if len(quote) > 100:
             q_font_size = 40
         else:
             q_font_size = 55
 
-        # Quote text
         quote_clip = TextClip(
             text=quote_text,
             font_size=q_font_size,
@@ -256,10 +301,11 @@ def create_youtube_short(quote, author, image_path):
             stroke_width=1
         )
         quote_clip = apply_animation(quote_clip, animation, 500)
-        quote_clip = quote_clip.with_start(1)
-        quote_clip = quote_clip.with_duration(duration - 1)
+        quote_clip = quote_clip.with_start(quote_start)
+        quote_clip = quote_clip.with_duration(duration - quote_start)
+        clips.append(quote_clip)
 
-        # Author text
+        # Author
         author_clip = TextClip(
             text=f"— {author}\n\n",
             font_size=32,
@@ -272,8 +318,9 @@ def create_youtube_short(quote, author, image_path):
             stroke_width=1
         )
         author_clip = apply_animation(author_clip, animation, 1200)
-        author_clip = author_clip.with_start(3)
-        author_clip = author_clip.with_duration(duration - 3)
+        author_clip = author_clip.with_start(quote_start + 2)
+        author_clip = author_clip.with_duration(duration - quote_start - 2)
+        clips.append(author_clip)
 
         # Subscribe watermark
         channel_clip = TextClip(
@@ -290,8 +337,9 @@ def create_youtube_short(quote, author, image_path):
         channel_clip = channel_clip.with_position(("center", 1550))
         channel_clip = channel_clip.with_start(0)
         channel_clip = channel_clip.with_duration(duration)
+        clips.append(channel_clip)
 
-        # End screen CTA
+        # End screen
         end_screen_clip = TextClip(
             text="NEW VIDEO EVERY DAY\nSubscribe Now\n",
             font_size=48,
@@ -306,6 +354,7 @@ def create_youtube_short(quote, author, image_path):
         end_screen_clip = end_screen_clip.with_position(("center", 800))
         end_screen_clip = end_screen_clip.with_start(duration - 5)
         end_screen_clip = end_screen_clip.with_duration(5)
+        clips.append(end_screen_clip)
 
         # Bell reminder
         bell_clip = TextClip(
@@ -322,17 +371,10 @@ def create_youtube_short(quote, author, image_path):
         bell_clip = bell_clip.with_position(("center", 1100))
         bell_clip = bell_clip.with_start(duration - 5)
         bell_clip = bell_clip.with_duration(5)
+        clips.append(bell_clip)
 
-        final_video = CompositeVideoClip([
-            video,
-            hook_clip,
-            quote_clip,
-            author_clip,
-            channel_clip,
-            end_screen_clip,
-            bell_clip
-        ])
-        print("Text animations added!")
+        final_video = CompositeVideoClip(clips)
+        print("Countdown + animations added!")
 
     except Exception as e:
         print(f"Text animation failed: {e}")
