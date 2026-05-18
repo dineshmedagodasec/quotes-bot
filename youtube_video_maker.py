@@ -5,160 +5,56 @@ import edge_tts
 import asyncio
 import os
 import random
-import textwrap
 import requests
 import numpy as np
 import json
 
-# Apply nest_asyncio to prevent event loop crashes in interactive environments
 try:
     import nest_asyncio
     nest_asyncio.apply()
 except ImportError:
     pass
 
-MUSIC_FILES = [
-    "music/music_1.mp3",
-    "music/music_2.mp3",
-    "music/music_3.mp3",
-    "music/music_4.mp3",
-    "music/music_5.mp3",
-    "music/music_6.mp3",
-    "music/music_7.mp3",
-]
+MUSIC_FILES = ["music/music_1.mp3", "music/music_2.mp3", "music/music_3.mp3"]
+VOICES = ["en-US-GuyNeural", "en-GB-RyanNeural", "en-US-AriaNeural"]
+SEARCH_KEYWORDS = ["nature sunset", "ocean waves", "forest peaceful", "sky clouds"]
 
-ANIMATIONS = ["slide_up", "slide_down", "slide_left", "bounce"]
-
-HOOKS = [
-    "WAIT... read this slowly\n\n",
-    "This will change how you think\n\n",
-    "You NEEDED to see this today\n\n",
-    "Stop scrolling. Read this.\n\n",
-    "This one hits different\n\n",
-    "Share this before you scroll\n\n",
-    "99% of people ignore this\n\n",
-    "This changed my life\n\n",
-    "Read this 3 times\n\n",
-    "Do NOT skip this\n\n",
-]
-
-SEARCH_KEYWORDS = [
-    "nature sunset",
-    "ocean waves",
-    "mountain sunrise",
-    "forest peaceful",
-    "sky clouds",
-    "waterfall nature",
-    "city timelapse",
-    "stars night sky",
-    "flowers blooming",
-    "river flowing"
-]
-
-VOICES = [
-    "en-US-GuyNeural",
-    "en-GB-RyanNeural",
-    "en-AU-WilliamNeural",
-    "en-US-AriaNeural",
-    "en-GB-SoniaNeural",
-]
-
-# Countdown timing constants
-COUNTDOWN_START = 1
-COUNTDOWN_EACH = 1.5
-COUNTDOWN_NUMBERS = 5
-GO_DURATION = 1.5
-QUOTE_DELAY = 2
-VOICE_DELAY = COUNTDOWN_START + (COUNTDOWN_NUMBERS * COUNTDOWN_EACH) + GO_DURATION + QUOTE_DELAY
+# Strict Visual Timeline Constants (Zero Overlap)
+HOOK_DURATION = 2.0
+COUNTDOWN_DURATION = 3.0  # 1 second per number (3, 2, 1)
+VOICE_DELAY = HOOK_DURATION + COUNTDOWN_DURATION  # Audio & Quote start exactly at 5.0s
 
 def safe_run_async(coro):
-    """Safely execute async functions across different runtime environments."""
     try:
         loop = asyncio.get_running_loop()
     except RuntimeError:
         loop = None
-        
     if loop and loop.is_running():
         return loop.run_until_complete(coro)
     else:
         return asyncio.run(coro)
 
-def get_pexels_video(quote):
+def get_pexels_video():
     api_key = os.getenv("PEXELS_API_KEY")
-    keyword = random.choice(SEARCH_KEYWORDS)
-    print(f"Searching video for: {keyword}")
-
-    url = f"https://api.pexels.com/videos/search?query={keyword}&orientation=portrait&size=medium&per_page=10"
+    url = f"https://api.pexels.com/videos/search?query={random.choice(SEARCH_KEYWORDS)}&orientation=portrait&per_page=5"
     headers = {"Authorization": api_key}
-
     try:
-        response = requests.get(url, headers=headers)
-        data = response.json()
-        videos = data.get("videos", [])
-        if not videos:
-            return None
-
-        video = random.choice(videos)
-        video_files = video.get("video_files", [])
-        best_file = None
-        for vf in video_files:
-            if vf.get("quality") in ["hd", "sd"]:
-                best_file = vf
-                break
-        if not best_file and video_files:
-            best_file = video_files[0]
-
-        if best_file:
-            print(f"Downloading video...")
-            video_response = requests.get(best_file["link"], stream=True)
-            video_path = "background_video.mp4"
+        response = requests.get(url, headers=headers).json()
+        videos = response.get("videos", [])
+        if not videos: return None
+        
+        video_url = videos[0]["video_files"][0]["link"]
+        video_path = "background_video.mp4"
+        with requests.get(video_url, stream=True) as r:
             with open(video_path, "wb") as f:
-                for chunk in video_response.iter_content(chunk_size=8192):
-                    f.write(chunk)
-            return video_path
-
-    except Exception as e:
-        print(f"Pexels failed: {e}")
+                for chunk in r.iter_content(chunk_size=8192): f.write(chunk)
+        return video_path
+    except Exception:
         return None
 
-def apply_animation(clip, animation, base_y):
-    if animation == "slide_up":
-        clip = clip.with_position(
-            lambda t: ("center", max(base_y, base_y + 200 - int(t * 150)))
-            if t < 1.5 else ("center", base_y)
-        )
-    elif animation == "slide_down":
-        clip = clip.with_position(
-            lambda t: ("center", max(base_y - 200, base_y - 200 + int(t * 150)))
-            if t < 1.5 else ("center", base_y)
-        )
-    elif animation == "slide_left":
-        clip = clip.with_position(
-            lambda t: (max(0, 1080 - int(t * 800)), base_y)
-            if t < 1.5 else ("center", base_y)
-        )
-    elif animation == "bounce":
-        def bounce_pos(t):
-            if t < 0.3:
-                return ("center", base_y - int(t * 400))
-            elif t < 0.6:
-                return ("center", base_y - 120 + int((t - 0.3) * 400))
-            elif t < 0.8:
-                return ("center", base_y + int((t - 0.6) * 200))
-            elif t < 1.0:
-                return ("center", base_y + 40 - int((t - 0.8) * 200))
-            else:
-                return ("center", base_y)
-        clip = clip.with_position(bounce_pos)
-    else:
-        clip = clip.with_position(("center", base_y))
-    return clip
-
 async def generate_voice_with_timing(text, voice, audio_path):
-    """Generate voice and capture word timing data"""
     timing_data = []
     communicate = edge_tts.Communicate(text, voice)
-
     with open(audio_path, "wb") as audio_file:
         async for chunk in communicate.stream():
             if chunk["type"] == "audio":
@@ -166,259 +62,131 @@ async def generate_voice_with_timing(text, voice, audio_path):
             elif chunk["type"] == "WordBoundary":
                 timing_data.append({
                     "word": chunk["text"],
-                    "start": chunk["offset"] / 10000000,  # Convert to seconds
+                    "start": chunk["offset"] / 10000000,
                     "duration": chunk["duration"] / 10000000
                 })
     return timing_data
 
-def generate_karaoke_chunks(timing_data):
+def generate_clean_chunks(timing_data, total_duration=None, fallback_text=None):
     """
-    Groups spoken words into punchy 2-word phrasing limits.
-    Clears out the old words completely when the next chunk begins.
+    Groups words into tight 1-2 word phrases.
+    If TTS timing fails, it auto-splits the raw text evenly so it NEVER makes a wall of text.
     """
     chunks = []
-    words_per_screen = 2  # Set to 1 or 2 words max for that clean aesthetic popup style
+    words_per_screen = 2  # Max words on screen at once
     
-    for i in range(0, len(timing_data), words_per_screen):
-        group = timing_data[i : i + words_per_screen]
-        if not group:
-            continue
+    if timing_data:
+        for i in range(0, len(timing_data), words_per_screen):
+            group = timing_data[i : i + words_per_screen]
+            phrase_text = " ".join([w["word"] for w in group]).upper()
+            start_time = group[0]["start"]
             
-        # Clean up text and convert to UPPERCASE for that aggressive retention style
-        phrase_text = " ".join([w["word"] for w in group]).upper()
-        start_time = group[0]["start"]
+            if i + words_per_screen < len(timing_data):
+                end_time = timing_data[i + words_per_screen]["start"] - 0.02  # Tiny gap to force screen clear
+            else:
+                end_time = group[-1]["start"] + group[-1]["duration"]
+                
+            chunks.append({"text": phrase_text, "start": start_time, "end": end_time})
+    elif fallback_text:
+        # Fallback mechanical layout if API timing misses
+        words = fallback_text.split()
+        raw_chunks = [" ".join(words[i : i + words_per_screen]).upper() for i in range(0, len(words), words_per_screen)]
+        per_chunk_playback = (total_duration - VOICE_DELAY - 2) / max(len(raw_chunks), 1)
         
-        # End exactly when the next word group starts to maintain seamless pacing
-        if i + words_per_screen < len(timing_data):
-            end_time = timing_data[i + words_per_screen]["start"]
-        else:
-            end_time = group[-1]["start"] + group[-1]["duration"] + 0.5
+        for idx, text_block in enumerate(raw_chunks):
+            start = (idx * per_chunk_playback)
+            end = start + per_chunk_playback - 0.02
+            chunks.append({"text": text_block, "start": start, "end": end})
             
-        chunks.append({
-            "text": phrase_text,
-            "start": start_time,
-            "end": end_time
-        })
-        
     return chunks
 
 def create_youtube_short(quote, author, image_path):
-    # Step 1: Generate voice with word timing
     selected_voice = random.choice(VOICES)
-    print(f"Voice: {selected_voice}")
-
-    tts_text = f"{quote}. By {author}"
     audio_path = "quote_audio.mp3"
-    timing_path = "quote_timing.json"
-    voice_duration = 20
-    timing_data = []
-
+    tts_text = f"{quote}"
+    
+    # 1. Audio Generation
     try:
         timing_data = safe_run_async(generate_voice_with_timing(tts_text, selected_voice, audio_path))
-        print(f"Edge TTS voice generated with {len(timing_data)} word timings!")
-        with open(timing_path, "w") as f:
-            json.dump(timing_data, f)
-    except Exception as e:
-        print(f"Edge TTS failed: {e} — using gTTS fallback")
-        try:
-            from gtts import gTTS
-            tts = gTTS(text=tts_text, lang='en', slow=False, tld='com.au')
-            tts.save(audio_path)
-        except Exception as e2:
-            print(f"gTTS also failed: {e2}")
-
-    # Load voice and delay using with_start
-    try:
-        if os.path.exists(audio_path):
-            voice_audio = AudioFileClip(audio_path)
-            voice_duration = voice_audio.duration
-            final_voice = voice_audio.with_start(VOICE_DELAY)
-            print(f"Voice will start at: {VOICE_DELAY} seconds!")
-        else:
-            final_voice = AudioClip(make_frame=lambda t: np.zeros((2,)), duration=30, fps=44100)
-    except Exception as e:
-        print(f"Voice loading failed: {e}")
+        voice_audio = AudioFileClip(audio_path)
+        voice_duration = voice_audio.duration
+        final_voice = voice_audio.with_start(VOICE_DELAY)
+    except Exception:
+        timing_data = []
+        voice_duration = 12.0  # Estimated fallback math
         final_voice = AudioClip(make_frame=lambda t: np.zeros((2,)), duration=30, fps=44100)
 
-    # Step 2: Set duration
-    duration = max(VOICE_DELAY + voice_duration + 3, 40)
-    duration = min(duration, 59)
-    print(f"Duration: {duration} seconds")
-
-    # Step 3: Pick random music
-    music_file = random.choice(MUSIC_FILES)
-    print(f"Music: {music_file}")
-
-    try:
-        music_clip = AudioFileClip(music_file)
-        music_clip = music_clip.subclipped(0, duration)
-        music_clip = music_clip.with_effects([MultiplyVolume(0.15)])
-        final_audio = CompositeAudioClip([music_clip, final_voice])
-    except Exception as e:
-        print(f"Music failed: {e}")
-        final_audio = final_voice
-
-    # Step 4: Get background video
-    bg_video_path = get_pexels_video(quote)
-    video = None
-
+    duration = VOICE_DELAY + voice_duration + 2.5
+    
+    # 2. Background Handling
+    bg_video_path = get_pexels_video()
     if bg_video_path:
-        try:
-            bg_video = VideoFileClip(bg_video_path)
-            if bg_video.duration < duration:
-                loops = int(duration / bg_video.duration) + 1
-                bg_video = concatenate_videoclips([bg_video] * loops)
-            bg_video = bg_video.subclipped(0, duration)
-            bg_video = bg_video.resized(height=1920)
-            x_center = bg_video.w / 2
-            bg_video = bg_video.cropped(x1=x_center - 540, x2=x_center + 540, y1=0, y2=1920)
-            overlay = ColorClip(size=(1080, 1920), color=[0, 0, 0], duration=duration).with_opacity(0.5)
-            video = CompositeVideoClip([bg_video, overlay])
-            video = video.with_audio(final_audio)
-            print("Background video loaded!")
-        except Exception as e:
-            print(f"Video failed: {e}")
-            video = None
+        bg_video = VideoFileClip(bg_video_path)
+        if bg_video.duration < duration:
+            bg_video = concatenate_videoclips([bg_video] * (int(duration / bg_video.duration) + 1))
+        bg_video = bg_video.subclipped(0, duration).resized(height=1920)
+        bg_video = bg_video.cropped(x1=(bg_video.w/2)-540, x2=(bg_video.w/2)+540, y1=0, y2=1920)
+        overlay = ColorClip(size=(1080, 1920), color=[0, 0, 0], duration=duration).with_opacity(0.4)
+        video = CompositeVideoClip([bg_video, overlay])
+    else:
+        img = Image.open(image_path).resize((1080, 1920))
+        img.save("vertical_fallback.png")
+        video = ImageClip("vertical_fallback.png", duration=duration)
 
-    if video is None:
-        img = Image.open(image_path)
-        img_resized = img.resize((1080, 1920))
-        vertical_path = "vertical_quote.png"
-        img_resized.save(vertical_path)
-        video = ImageClip(vertical_path, duration=duration)
-        video = video.with_audio(final_audio)
-        print("Using static image!")
-
-    # Step 5: Pick random animation
-    animation = random.choice(ANIMATIONS)
-    print(f"Animation: {animation}")
-
-    # Step 6: Add text overlays
+    # 3. Audio Mix
     try:
-        clips = [video]
+        music = AudioFileClip(random.choice(MUSIC_FILES)).subclipped(0, duration).with_effects([MultiplyVolume(0.12)])
+        video = video.with_audio(CompositeAudioClip([music, final_voice]))
+    except Exception:
+        video = video.with_audio(final_voice)
 
-        # Hook text
-        hook_text = random.choice(HOOKS)
-        hook_clip = TextClip(
-            text=hook_text, font_size=42, color="#FFD700", font="DejaVuSans",
-            method="caption", size=(750, None), text_align="center",
-            stroke_color="black", stroke_width=2
-        )
-        hook_clip = hook_clip.with_position(("center", 250)).with_start(0).with_duration(8)
-        clips.append(hook_clip)
+    # 4. Zero-Overlap Text Timeline Construction
+    clips = [video]
 
-        # Countdown 5 to 1
-        for i, number in enumerate(["5\n", "4\n", "3\n", "2\n", "1\n"]):
-            num_clip = TextClip(
-                text=number, font_size=250, color="#FFFFFF", font="LiberationSans-Bold",
-                method="label", text_align="center", stroke_color="black", stroke_width=8
-            )
-            num_clip = num_clip.with_position(("center", 750)).with_start(COUNTDOWN_START + i * COUNTDOWN_EACH).with_duration(COUNTDOWN_EACH)
-            clips.append(num_clip)
+    # Phase 1: Only the Hook Shows (0.0s - 2.0s)
+    hook_clip = TextClip(
+        text="READ THIS SLOWLY...", font_size=55, color="#FFD700", font="LiberationSans-Bold",
+        method="caption", size=(800, None), text_align="center", stroke_color="black", stroke_width=4
+    ).with_position(("center", "center")).with_start(0).with_duration(HOOK_DURATION)
+    clips.append(hook_clip)
 
-        # GO!
-        go_clip = TextClip(
-            text="GO!\n", font_size=200, color="#00FF00", font="LiberationSans-Bold",
-            method="label", text_align="center", stroke_color="black", stroke_width=8
-        )
-        go_clip = go_clip.with_position(("center", 800)).with_start(COUNTDOWN_START + COUNTDOWN_NUMBERS * COUNTDOWN_EACH).with_duration(GO_DURATION)
-        clips.append(go_clip)
+    # Phase 2: Only the Countdown Shows (2.0s - 5.0s)
+    for i, num in enumerate(["3", "2", "1"]):
+        num_clip = TextClip(
+            text=num, font_size=180, color="#FFFFFF", font="LiberationSans-Bold",
+            method="label", stroke_color="black", stroke_width=6
+        ).with_position(("center", "center")).with_start(HOOK_DURATION + i).with_duration(0.95)
+        clips.append(num_clip)
 
-        # ✅ RETAINED SUBTITLE STYLE — Rapid phrase pops with clean screen clearings
-        if timing_data:
-            print(f"Creating karaoke-style subtitle clips...")
-            chunks = generate_karaoke_chunks(timing_data)
+    # Phase 3: Flash Karaoke Popups (Starts exactly at 5.0s)
+    chunks = generate_clean_chunks(timing_data, total_duration=duration, fallback_text=quote)
+    for chunk in chunks:
+        chunk_start = chunk["start"] + VOICE_DELAY
+        chunk_end = chunk["end"] + VOICE_DELAY
+        
+        if chunk_start >= duration: break
 
-            for chunk in chunks:
-                chunk_start = chunk["start"] + VOICE_DELAY
-                chunk_end = chunk["end"] + VOICE_DELAY
-                chunk_dur = max(chunk_end - chunk_start, 0.05)
+        word_clip = TextClip(
+            text=chunk["text"], font_size=85, color="#FFFFFF", font="LiberationSans-Bold",
+            method="caption", size=(900, None), text_align="center", stroke_color="black", stroke_width=5
+        ).with_position(("center", "center")).with_start(chunk_start).with_duration(chunk_end - chunk_start)
+        clips.append(word_clip)
 
-                if chunk_start >= duration:
-                    break
+    # Phase 4: Author Outro (Only shows up AFTER the voice finishes speaking)
+    outro_start = VOICE_DELAY + voice_duration
+    outro_clip = TextClip(
+        text=f"— {author.upper()} —\n\nSUBSCRIBE FOR MORE", font_size=45, color="#FFD700", font="LiberationSans-Bold",
+        method="caption", size=(850, None), text_align="center", stroke_color="black", stroke_width=3
+    ).with_position(("center", "center")).with_start(outro_start).with_duration(duration - outro_start)
+    clips.append(outro_clip)
 
-                # Pop color changes alternating between yellow/gold and white for visual retention
-                text_color = "#FFD700" if random.choice([True, False]) else "#FFFFFF"
-
-                subtitle_clip = TextClip(
-                    text=chunk["text"],
-                    font_size=75,                  # Massive font sizes for focus
-                    color=text_color,
-                    font="LiberationSans-Bold",
-                    method="caption",
-                    size=(900, None),
-                    text_align="center",
-                    stroke_color="black",
-                    stroke_width=4                 # Extra heavy contrast border
-                )
-                subtitle_clip = subtitle_clip.with_position(("center", 960)) # Centered tracking positioning
-                subtitle_clip = subtitle_clip.with_start(chunk_start)
-                subtitle_clip = subtitle_clip.with_duration(min(chunk_dur, duration - chunk_start))
-                clips.append(subtitle_clip)
-
-            print(f"Added {len(chunks)} synchronized flash subtitle phrases!")
-
-        else:
-            print("No timing data available — falling back to wrapped static text blocks")
-            lines = quote.split('\n')
-            wrapped_lines = [textwrap.fill(line, width=25) if len(line) > 25 else line for line in lines]
-            quote_text = '\n'.join(wrapped_lines) + '\n\n'
-            quote_start = VOICE_DELAY
-            q_font_size = 40 if len(quote) > 100 else 55
-
-            quote_clip = TextClip(
-                text=quote_text, font_size=q_font_size, color="white", font="LiberationSans-Bold",
-                method="caption", size=(750, None), text_align="center", stroke_color="black", stroke_width=1
-            )
-            quote_clip = apply_animation(quote_clip, animation, 500).with_start(quote_start).with_duration(duration - quote_start)
-            clips.append(quote_clip)
-
-        # Author — appears after voice finishes quote
-        author_start = VOICE_DELAY + voice_duration - 3
-        author_clip = TextClip(
-            text=f"— {author}\n\n", font_size=36, color="#FFFFFF", font="DejaVuSans-Bold",
-            method="caption", size=(700, None), text_align="center", stroke_color="black", stroke_width=1
-        )
-        author_clip = author_clip.with_position(("center", 1250)).with_start(max(author_start, VOICE_DELAY)).with_duration(duration - max(author_start, VOICE_DELAY))
-        clips.append(author_clip)
-
-        # Subscribe watermark
-        channel_clip = TextClip(
-            text="Subscribe for daily quotes\n\n", font_size=26, color="white", font="DejaVuSans-Bold",
-            method="caption", size=(700, None), text_align="center", stroke_color="black", stroke_width=1
-        )
-        channel_clip = channel_clip.with_position(("center", 1650)).with_start(0).with_duration(duration)
-        clips.append(channel_clip)
-
-        # End screen
-        end_screen_clip = TextClip(
-            text="NEW VIDEO EVERY DAY\nSubscribe Now\n", font_size=48, color="#FFD700", font="DejaVuSans-Bold",
-            method="caption", size=(750, None), text_align="center", stroke_color="black", stroke_width=2
-        )
-        end_screen_clip = end_screen_clip.with_position(("center", 800)).with_start(duration - 5).with_duration(5)
-        clips.append(end_screen_clip)
-
-        # Bell reminder
-        bell_clip = TextClip(
-            text="Turn on notifications\nso you never miss a quote\n", font_size=32, color="white", font="DejaVuSans",
-            method="caption", size=(700, None), text_align="center", stroke_color="black", stroke_width=1
-        )
-        bell_clip = bell_clip.with_position(("center", 1200)).with_start(duration - 5).with_duration(5)
-        clips.append(bell_clip)
-
-        final_video = CompositeVideoClip(clips)
-        print("Subtitle style animations added!")
-
-    except Exception as e:
-        print(f"Text animation failed: {e}")
-        final_video = video
-
-    output_path = "youtube_short.mp4"
+    # Render
+    output_path = "clean_shorts_output.mp4"
+    final_video = CompositeVideoClip(clips)
     final_video.write_videofile(output_path, fps=24, codec="libx264", audio_codec="aac")
 
-    # Cleanup
-    for f in [audio_path, timing_path, "background_video.mp4", "vertical_quote.png"]:
-        if os.path.exists(f):
-            os.remove(f)
+    # Clean cache
+    for f in [audio_path, "background_video.mp4", "vertical_fallback.png"]:
+        if os.path.exists(f): os.remove(f)
 
     return output_path
