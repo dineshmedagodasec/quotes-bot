@@ -283,7 +283,7 @@ def create_youtube_short(quote, author, image_path):
             "#FFFFFF",
             "#FFFFFF",
             "#FFFFFF",
-            "#00FF00",
+            "#FFFFFF",
         ]
 
         for i, number in enumerate(["5\n", "4\n", "3\n", "2\n", "1\n"]):
@@ -297,7 +297,7 @@ def create_youtube_short(quote, author, image_path):
                 stroke_color="black",
                 stroke_width=8
             )
-            num_clip = num_clip.with_position(("center", 950))
+            num_clip = num_clip.with_position(("center", 650))
             num_clip = num_clip.with_start(COUNTDOWN_START + i * COUNTDOWN_EACH)
             num_clip = num_clip.with_duration(COUNTDOWN_EACH)
             clips.append(num_clip)
@@ -313,7 +313,7 @@ def create_youtube_short(quote, author, image_path):
             stroke_color="black",
             stroke_width=8
         )
-        go_clip = go_clip.with_position(("center", 950))
+        go_clip = go_clip.with_position(("center", 650))
         go_clip = go_clip.with_start(
             COUNTDOWN_START + COUNTDOWN_NUMBERS * COUNTDOWN_EACH)
         go_clip = go_clip.with_duration(GO_DURATION)
