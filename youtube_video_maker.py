@@ -57,9 +57,9 @@ VOICES = [
 
 # Countdown timing constants
 COUNTDOWN_START = 1       # Countdown starts at 1 second
-COUNTDOWN_EACH = 1.5      # Each number shows for 1.5 seconds
+COUNTDOWN_EACH = 1        # Each number shows for 1.5 seconds
 COUNTDOWN_NUMBERS = 5     # 5 numbers
-GO_DURATION = 1.5         # GO! shows for 1.5 seconds
+GO_DURATION = 1           # GO! shows for 1.5 seconds
 QUOTE_DELAY = 2           # Extra delay after GO! before quote
 VOICE_DELAY = COUNTDOWN_START + (COUNTDOWN_NUMBERS * COUNTDOWN_EACH) + GO_DURATION + QUOTE_DELAY
 
@@ -283,7 +283,7 @@ def create_youtube_short(quote, author, image_path):
                 stroke_color="black",
                 stroke_width=8
             )
-            num_clip = num_clip.with_position(("center", 750))
+            num_clip = num_clip.with_position(("center", 850))
             num_clip = num_clip.with_start(COUNTDOWN_START + i * COUNTDOWN_EACH)
             num_clip = num_clip.with_duration(COUNTDOWN_EACH)
             clips.append(num_clip)
