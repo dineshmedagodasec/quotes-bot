@@ -279,10 +279,10 @@ def create_youtube_short(quote, author, image_path):
 
         # Countdown 5 to 1
         countdown_colors = [
-            "#FF0000",
-            "#FF0000",
-            "#FF0000",
-            "#FF0000",
+            "#FFFFFF",
+            "#FFFFFF",
+            "#FFFFFF",
+            "#FFFFFF",
             "#00FF00",
         ]
 
