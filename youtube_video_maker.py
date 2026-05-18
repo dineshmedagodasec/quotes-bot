@@ -139,29 +139,38 @@ async def generate_voice(text, voice, output_path):
     await communicate.save(output_path)
 
 def create_youtube_short(quote, author, image_path):
-    # Step 1: Generate voice
+    # Step 1: Generate voice with silence at start
     selected_voice = random.choice(VOICES)
     print(f"Voice: {selected_voice}")
 
     tts_text = f"{quote}... by {author}"
     audio_path = "quote_audio.mp3"
-    delayed_audio_path = "quote_audio_delayed.mp3"
+    silent_audio_path = "quote_audio_delayed.mp3"
 
     try:
         asyncio.run(generate_voice(tts_text, selected_voice, audio_path))
         print("Edge TTS voice generated!")
 
+        # Add silence before voice starts
+        # Countdown takes: 1 + (5 * 1.5) + 1.5 + 2 = 12 seconds
+        # So delay voice by 12 seconds
+        from moviepy import AudioFileClip, concatenate_audioclips
+        from moviepy import AudioClip
+        import numpy as np
+
+        voice_audio = AudioFileClip(audio_path)
+        
         # Add silence before voice so it starts after countdown
         voice_audio = AudioFileClip(audio_path)
         silence = AudioClip(
-            make_frame=lambda t: np.zeros((2,)),
-            duration=VOICE_DELAY,
+            lambda t: np.zeros((2,)) if hasattr(t, '__len__') else np.zeros(2),
+            duration=12,
             fps=44100
         )
         delayed_audio = concatenate_audioclips([silence, voice_audio])
-        delayed_audio.write_audiofile(delayed_audio_path)
-        final_voice = AudioFileClip(delayed_audio_path)
-        print(f"Voice delayed by {VOICE_DELAY} seconds!")
+        delayed_audio.write_audiofile(silent_audio_path)
+        audio_path = silent_audio_path
+        print("Voice delayed by 12 seconds!")
 
     except Exception as e:
         print(f"Voice delay failed: {e}")
