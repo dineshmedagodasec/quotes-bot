@@ -413,7 +413,7 @@ def create_youtube_short(quote, author, image_path):
                 stroke_color="black",
                 stroke_width=1
             )
-            quote_clip = apply_animation(quote_clip, animation, 500)
+            quote_clip = apply_animation(quote_clip, animation, 450)
             quote_clip = quote_clip.with_start(quote_start)
             quote_clip = quote_clip.with_duration(duration - quote_start)
             clips.append(quote_clip)
@@ -449,7 +449,7 @@ def create_youtube_short(quote, author, image_path):
             stroke_color="black",
             stroke_width=1
         )
-        channel_clip = channel_clip.with_position(("center", 1550))
+        channel_clip = channel_clip.with_position(("center", 1600))
         channel_clip = channel_clip.with_start(0)
         channel_clip = channel_clip.with_duration(duration)
         clips.append(channel_clip)
@@ -466,7 +466,7 @@ def create_youtube_short(quote, author, image_path):
             stroke_color="black",
             stroke_width=2
         )
-        end_screen_clip = end_screen_clip.with_position(("center", 800))
+        end_screen_clip = end_screen_clip.with_position(("center", 900))
         end_screen_clip = end_screen_clip.with_start(duration - 5)
         end_screen_clip = end_screen_clip.with_duration(5)
         clips.append(end_screen_clip)
@@ -483,7 +483,7 @@ def create_youtube_short(quote, author, image_path):
             stroke_color="black",
             stroke_width=1
         )
-        bell_clip = bell_clip.with_position(("center", 1200))
+        bell_clip = bell_clip.with_position(("center", 1300))
         bell_clip = bell_clip.with_start(duration - 5)
         bell_clip = bell_clip.with_duration(5)
         clips.append(bell_clip)
