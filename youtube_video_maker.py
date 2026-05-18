@@ -1,4 +1,4 @@
-from moviepy import VideoFileClip, AudioFileClip, CompositeAudioClip, TextClip, CompositeVideoClip, ColorClip, concatenate_videoclips, ImageClip, AudioClip, concatenate_audioclips
+from moviepy import VideoFileClip, AudioFileClip, CompositeAudioClip, TextClip, CompositeVideoClip, ColorClip, concatenate_videoclips, ImageClip, AudioClip
 from moviepy.audio.fx import MultiplyVolume
 from PIL import Image
 import edge_tts
@@ -139,16 +139,15 @@ async def generate_voice(text, voice, output_path):
     await communicate.save(output_path)
 
 def create_youtube_short(quote, author, image_path):
-    # Step 1: Generate voice with silence delay
+    # Step 1: Generate voice
     selected_voice = random.choice(VOICES)
     print(f"Voice: {selected_voice}")
 
     tts_text = f"{quote}... by {author}"
     audio_path = "quote_audio.mp3"
-    delayed_audio_path = "quote_audio_delayed.mp3"
-    final_voice = None
+    voice_duration = 20  # default
 
-    # Try Edge TTS first
+    # Try Edge TTS
     try:
         asyncio.run(generate_voice(tts_text, selected_voice, audio_path))
         print("Edge TTS voice generated!")
@@ -161,41 +160,33 @@ def create_youtube_short(quote, author, image_path):
         except Exception as e2:
             print(f"gTTS also failed: {e2}")
 
-    # Add silence before voice
+    # Load voice and delay using with_start
     try:
         if os.path.exists(audio_path):
             voice_audio = AudioFileClip(audio_path)
-            silence = AudioClip(
-                make_frame=lambda t: np.zeros((2,)),
-                duration=VOICE_DELAY,
-                fps=44100
-            )
-            delayed_audio = concatenate_audioclips([silence, voice_audio])
-            delayed_audio.write_audiofile(delayed_audio_path)
-            final_voice = AudioFileClip(delayed_audio_path)
-            print(f"Voice delayed by {VOICE_DELAY} seconds!")
+            voice_duration = voice_audio.duration
+            # Delay voice start by VOICE_DELAY seconds
+            final_voice = voice_audio.with_start(VOICE_DELAY)
+            print(f"Voice will start at: {VOICE_DELAY} seconds!")
         else:
-            print("Audio file not found — using silence only")
+            print("Audio file not found!")
             final_voice = AudioClip(
                 make_frame=lambda t: np.zeros((2,)),
                 duration=30,
                 fps=44100
             )
     except Exception as e:
-        print(f"Voice delay failed: {e}")
-        # Last resort fallback
-        if os.path.exists(audio_path):
-            final_voice = AudioFileClip(audio_path)
-        else:
-            final_voice = AudioClip(
-                make_frame=lambda t: np.zeros((2,)),
-                duration=30,
-                fps=44100
-            )
+        print(f"Voice loading failed: {e}")
+        final_voice = AudioClip(
+            make_frame=lambda t: np.zeros((2,)),
+            duration=30,
+            fps=44100
+        )
 
     # Step 2: Set duration
-    duration = max(final_voice.duration + 2, 40)
+    duration = max(VOICE_DELAY + voice_duration + 3, 40)
     duration = min(duration, 59)
+    print(f"Duration: {duration} seconds")
 
     # Step 3: Pick random music
     music_file = random.choice(MUSIC_FILES)
@@ -268,7 +259,7 @@ def create_youtube_short(quote, author, image_path):
 
         clips = [video]
 
-        # Hook text — visible from frame 0
+        # Hook text
         hook_text = random.choice(HOOKS)
         hook_clip = TextClip(
             text=hook_text,
@@ -286,7 +277,7 @@ def create_youtube_short(quote, author, image_path):
         hook_clip = hook_clip.with_duration(8)
         clips.append(hook_clip)
 
-        # Countdown 5 to 1 — smaller size, higher position
+        # Countdown 5 to 1
         countdown_colors = [
             "#FF0000",
             "#FF4500",
@@ -298,23 +289,23 @@ def create_youtube_short(quote, author, image_path):
         for i, number in enumerate(["5", "4", "3", "2", "1"]):
             num_clip = TextClip(
                 text=number,
-                font_size=250,          # ✅ Smaller than before
+                font_size=250,
                 color=countdown_colors[i],
                 font="LiberationSans-Bold",
                 method="label",
                 text_align="center",
                 stroke_color="black",
-                stroke_width=8          # ✅ Reduced stroke
+                stroke_width=8
             )
-            num_clip = num_clip.with_position(("center", 750))  # ✅ Higher position
+            num_clip = num_clip.with_position(("center", 750))
             num_clip = num_clip.with_start(COUNTDOWN_START + i * COUNTDOWN_EACH)
             num_clip = num_clip.with_duration(COUNTDOWN_EACH)
             clips.append(num_clip)
 
-        # GO! text
+        # GO!
         go_clip = TextClip(
             text="GO!",
-            font_size=200,              # ✅ Smaller than before
+            font_size=200,
             color="#00FF00",
             font="LiberationSans-Bold",
             method="label",
@@ -322,12 +313,13 @@ def create_youtube_short(quote, author, image_path):
             stroke_color="black",
             stroke_width=8
         )
-        go_clip = go_clip.with_position(("center", 800))  # ✅ Higher position
-        go_clip = go_clip.with_start(COUNTDOWN_START + COUNTDOWN_NUMBERS * COUNTDOWN_EACH)
+        go_clip = go_clip.with_position(("center", 800))
+        go_clip = go_clip.with_start(
+            COUNTDOWN_START + COUNTDOWN_NUMBERS * COUNTDOWN_EACH)
         go_clip = go_clip.with_duration(GO_DURATION)
         clips.append(go_clip)
 
-        # Quote appears AFTER countdown finishes
+        # Quote appears after countdown
         quote_start = VOICE_DELAY
         if len(quote) > 100:
             q_font_size = 40
@@ -350,7 +342,7 @@ def create_youtube_short(quote, author, image_path):
         quote_clip = quote_clip.with_duration(duration - quote_start)
         clips.append(quote_clip)
 
-        # Author appears 2 seconds after quote
+        # Author
         author_clip = TextClip(
             text=f"— {author}\n\n",
             font_size=32,
@@ -384,7 +376,7 @@ def create_youtube_short(quote, author, image_path):
         channel_clip = channel_clip.with_duration(duration)
         clips.append(channel_clip)
 
-        # End screen CTA
+        # End screen
         end_screen_clip = TextClip(
             text="NEW VIDEO EVERY DAY\nSubscribe Now\n",
             font_size=48,
@@ -434,8 +426,7 @@ def create_youtube_short(quote, author, image_path):
     )
 
     # Cleanup
-    for f in [audio_path, delayed_audio_path,
-              "background_video.mp4", "vertical_quote.png"]:
+    for f in [audio_path, "background_video.mp4", "vertical_quote.png"]:
         if os.path.exists(f):
             os.remove(f)
 
