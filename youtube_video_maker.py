@@ -177,61 +177,71 @@ def split_into_chunks(timing_data, words_per_chunk=2):
     return chunks
 
 def create_youtube_short(quote, author, image_path):
-    # Step 1: Generate voice with word timing
     selected_voice = random.choice(VOICES)
     print(f"Voice: {selected_voice}")
 
-    tts_text = f"{quote}. By {author}"
-    audio_path = "quote_audio.mp3"
+    # Temporary step file paths
+    quote_audio_path = "quote_only.mp3"
+    author_audio_path = "author_only.mp3"
     timing_path = "quote_timing.json"
-    voice_duration = 20
+    
+    quote_duration = 0
+    author_duration = 0
     timing_data = []
 
+    # Step 1: Generate separate audio streams so karaoke features ONLY affect the quote
     try:
+        # Generate quote with explicit timestamp data
         timing_data = asyncio.run(
-            generate_voice_with_timing(
-                tts_text, selected_voice, audio_path, timing_path
-            )
+            generate_voice_with_timing(quote, selected_voice, quote_audio_path, timing_path)
         )
-        print(f"Edge TTS voice generated with {len(timing_data)} word timings!")
+        print(f"Edge TTS quote generated with {len(timing_data)} word timings!")
+        
+        # Generate author audio separately (no karaoke timing parsing needed)
+        communicate_author = edge_tts.Communicate(f"By {author}", selected_voice)
+        asyncio.run(communicate_author.save(author_audio_path))
+        
     except Exception as e:
         print(f"Edge TTS failed: {e} — using gTTS fallback")
         try:
             from gtts import gTTS
-            tts = gTTS(text=tts_text, lang='en', slow=False, tld='com.au')
-            tts.save(audio_path)
+            tts_full = gTTS(text=f"{quote}. By {author}", lang='en', slow=False)
+            tts_full.save(quote_audio_path)
         except Exception as e2:
             print(f"gTTS also failed: {e2}")
 
-    # Load voice and delay using with_start
+    # Build the combined voice audio sequence
+    audio_clips_to_mix = []
     try:
-        if os.path.exists(audio_path):
-            voice_audio = AudioFileClip(audio_path)
-            voice_duration = voice_audio.duration
-            final_voice = voice_audio.with_start(VOICE_DELAY)
-            print(f"Voice will start at: {VOICE_DELAY} seconds!")
+        if os.path.exists(quote_audio_path):
+            q_audio = AudioFileClip(quote_audio_path)
+            quote_duration = q_audio.duration
+            # Align quote start with global layout delays
+            audio_clips_to_mix.append(q_audio.with_start(VOICE_DELAY))
+            
+            if os.path.exists(author_audio_path):
+                a_audio = AudioFileClip(author_audio_path)
+                author_duration = a_audio.duration
+                # Play author name 0.5s after the quote vocal finishes
+                author_start_time = VOICE_DELAY + quote_duration + 0.5
+                audio_clips_to_mix.append(a_audio.with_start(author_start_time))
+                
+            final_voice = CompositeAudioClip(audio_clips_to_mix)
         else:
-            final_voice = AudioClip(
-                make_frame=lambda t: np.zeros((2,)),
-                duration=30,
-                fps=44100
-            )
+            final_voice = AudioClip(make_frame=lambda t: np.zeros((2,)), duration=30, fps=44100)
     except Exception as e:
-        print(f"Voice loading failed: {e}")
-        final_voice = AudioClip(
-            make_frame=lambda t: np.zeros((2,)),
-            duration=30,
-            fps=44100
-        )
+        print(f"Voice arrangement preparation failed: {e}")
+        final_voice = AudioClip(make_frame=lambda t: np.zeros((2,)), duration=30, fps=44100)
 
-    # Step 2: Set duration
-    duration = max(VOICE_DELAY + voice_duration + 3, 40)
+    # Step 2: Set absolute video duration bounded to YouTube limits
+    total_voice_sequence = quote_duration + author_duration + 0.5
+    duration = max(VOICE_DELAY + total_voice_sequence + 4, 40)
     duration = min(duration, 59)
-    print(f"Duration: {duration} seconds")
+    print(f"Target Duration: {duration} seconds")
 
-    # Step 3: Pick random music
+    # Step 3: Mix background audio tracking tracks
     music_file = random.choice(MUSIC_FILES)
-    print(f"Music: {music_file}")
+    print(f"Music audio background file: {music_file}")
 
     try:
         music_clip = AudioFileClip(music_file)
@@ -239,10 +249,10 @@ def create_youtube_short(quote, author, image_path):
         music_clip = music_clip.with_effects([MultiplyVolume(0.15)])
         final_audio = CompositeAudioClip([music_clip, final_voice])
     except Exception as e:
-        print(f"Music failed: {e}")
+        print(f"Music failed mixing parameters: {e}")
         final_audio = final_voice
 
-    # Step 4: Get background video
+    # Step 4: Video feed assignment layers
     bg_video_path = get_pexels_video(quote)
     video = None
 
@@ -255,22 +265,13 @@ def create_youtube_short(quote, author, image_path):
             bg_video = bg_video.subclipped(0, duration)
             bg_video = bg_video.resized(height=1920)
             x_center = bg_video.w / 2
-            bg_video = bg_video.cropped(
-                x1=x_center - 540,
-                x2=x_center + 540,
-                y1=0,
-                y2=1920
-            )
-            overlay = ColorClip(
-                size=(1080, 1920),
-                color=[0, 0, 0],
-                duration=duration
-            ).with_opacity(0.5)
-            video = CompositeVideoClip([bg_video, overlay])
-            video = video.with_audio(final_audio)
-            print("Background video loaded!")
+            bg_video = bg_video.cropped(x1=x_center - 540, x2=x_center + 540, y1=0, y2=1920)
+            
+            overlay = ColorClip(size=(1080, 1920), color=[0, 0, 0], duration=duration).with_opacity(0.5)
+            video = CompositeVideoClip([bg_video, overlay]).with_audio(final_audio)
+            print("Background asset pipeline completed successfully!")
         except Exception as e:
-            print(f"Video failed: {e}")
+            print(f"Video parser system execution fault: {e}")
             video = None
 
     if video is None:
@@ -278,234 +279,114 @@ def create_youtube_short(quote, author, image_path):
         img_resized = img.resize((1080, 1920))
         vertical_path = "vertical_quote.png"
         img_resized.save(vertical_path)
-        video = ImageClip(vertical_path, duration=duration)
-        video = video.with_audio(final_audio)
-        print("Using static image!")
+        video = ImageClip(vertical_path, duration=duration).with_audio(final_audio)
+        print("Fallback tracking execution: Static image frame deployed.")
 
-    # Step 5: Pick random animation
     animation = random.choice(ANIMATIONS)
-    print(f"Animation: {animation}")
 
-    # Step 6: Add text overlays
+    # Step 6: Layout Compositing & Rendering
     try:
         clips = [video]
 
-        # Hook text
+        # Intro Hook overlay
         hook_text = random.choice(HOOKS)
         hook_clip = TextClip(
-            text=hook_text,
-            font_size=42,
-            color="#FFD700",
-            font="DejaVuSans",
-            method="caption",
-            size=(750, None),
-            text_align="center",
-            stroke_color="black",
-            stroke_width=2
-        )
-        hook_clip = hook_clip.with_position(("center", 250))
-        hook_clip = hook_clip.with_start(0)
-        hook_clip = hook_clip.with_duration(8)
+            text=hook_text, font_size=42, color="#FFD700", font="DejaVuSans",
+            method="caption", size=(750, None), text_align="center",
+            stroke_color="black", stroke_width=2
+        ).with_position(("center", 250)).with_start(0).with_duration(8)
         clips.append(hook_clip)
 
-        # Countdown 5 to 1
-        countdown_colors = [
-            "#FFFFFF",
-            "#FFFFFF",
-            "#FFFFFF",
-            "#FFFFFF",
-            "#FFFFFF",
-        ]
-
+        # Countdown 5 to 1 sequence engine
         for i, number in enumerate(["5\n", "4\n", "3\n", "2\n", "1\n"]):
             num_clip = TextClip(
-                text=number,
-                font_size=250,
-                color=countdown_colors[i],
-                font="LiberationSans-Bold",
-                method="label",
-                text_align="center",
-                stroke_color="white",
-                stroke_width=8
-            )
-            num_clip = num_clip.with_position(("center", 750))
-            num_clip = num_clip.with_start(
-                COUNTDOWN_START + i * COUNTDOWN_EACH)
-            num_clip = num_clip.with_duration(COUNTDOWN_EACH)
+                text=number, font_size=250, color="#FFFFFF", font="LiberationSans-Bold",
+                method="label", text_align="center", stroke_color="white", stroke_width=8
+            ).with_position(("center", 750)).with_start(COUNTDOWN_START + i * COUNTDOWN_EACH).with_duration(COUNTDOWN_EACH)
             clips.append(num_clip)
 
-        # GO!
+        # GO Graphic overlay
         go_clip = TextClip(
-            text="GO!\n",
-            font_size=200,
-            color="#00FF00",
-            font="LiberationSans-Bold",
-            method="label",
-            text_align="center",
-            stroke_color="black",
-            stroke_width=8
-        )
-        go_clip = go_clip.with_position(("center", 800))
-        go_clip = go_clip.with_start(
-            COUNTDOWN_START + COUNTDOWN_NUMBERS * COUNTDOWN_EACH)
-        go_clip = go_clip.with_duration(GO_DURATION)
+            text="GO!\n", font_size=200, color="#00FF00", font="LiberationSans-Bold",
+            method="label", text_align="center", stroke_color="black", stroke_width=8
+        ).with_position(("center", 800)).with_start(COUNTDOWN_START + COUNTDOWN_NUMBERS * COUNTDOWN_EACH).with_duration(GO_DURATION)
         clips.append(go_clip)
 
-        # ✅ SUBTITLE STYLE — Rapid 1-2 word flashes that wipe clean instantly
+        # ✅ FIXED KARAOKE ENGINE — Feeds 1-2 words sequentially based strictly on active vocal timeline
         if timing_data:
-            print(f"Creating subtitle clips...")
+            print(f"Processing subtitle matrix mapping segments...")
             chunks = split_into_chunks(timing_data, words_per_chunk=2)
 
             for chunk in chunks:
-                # Add VOICE_DELAY offset to sync with delayed voice
                 chunk_start = chunk["start"] + VOICE_DELAY
                 chunk_dur = max(chunk["duration"], 0.3)
 
-                # Skip if goes beyond video
                 if chunk_start >= duration:
                     break
 
                 subtitle_clip = TextClip(
-                    text=chunk["text"],
-                    font_size=75,
-                    color="white",
-                    font="LiberationSans-Bold",
-                    method="caption",
-                    size=(900, None),
-                    text_align="center",
-                    stroke_color="black",
-                    stroke_width=4
-                )
-                subtitle_clip = subtitle_clip.with_position(("center", "center"))
-                subtitle_clip = subtitle_clip.with_start(chunk_start)
-                subtitle_clip = subtitle_clip.with_duration(chunk_dur)
+                    text=chunk["text"], font_size=75, color="white", font="LiberationSans-Bold",
+                    method="caption", size=(900, None), text_align="center",
+                    stroke_color="black", stroke_width=4
+                ).with_position(("center", "center")).with_start(chunk_start).with_duration(chunk_dur)
+                
                 clips.append(subtitle_clip)
-
-            print(f"Added {len(chunks)} subtitle chunks!")
-
+            print(f"Successfully generated {len(chunks)} isolated phrase segments!")
         else:
-            # Fallback — show full quote at once if no timing data
-            print("No timing data — showing full quote")
+            # Full block text fail-safe fallback channel
+            print("Subtitle dataset timeline empty. Activating baseline block rendering.")
             lines = quote.split('\n')
-            wrapped_lines = []
-            for line in lines:
-                if len(line) > 25:
-                    wrapped = textwrap.fill(line, width=25)
-                    wrapped_lines.append(wrapped)
-                else:
-                    wrapped_lines.append(line)
+            wrapped_lines = [textwrap.fill(l, width=25) if len(l) > 25 else l for l in lines]
             quote_text = '\n'.join(wrapped_lines) + '\n\n'
-
-            quote_start = VOICE_DELAY
-            if len(quote) > 100:
-                q_font_size = 55
-            else:
-                q_font_size = 60
+            q_font_size = 55 if len(quote) > 100 else 60
 
             quote_clip = TextClip(
-                text=quote_text,
-                font_size=q_font_size,
-                color="white",
-                font="LiberationSans-Bold",
-                method="caption",
-                size=(750, None),
-                text_align="center",
-                stroke_color="black",
-                stroke_width=1
+                text=quote_text, font_size=q_font_size, color="white", font="LiberationSans-Bold",
+                method="caption", size=(750, None), text_align="center", stroke_color="black", stroke_width=1
             )
-            quote_clip = apply_animation(quote_clip, animation, 450)
-            quote_clip = quote_clip.with_start(quote_start)
-            quote_clip = quote_clip.with_duration(duration - quote_start)
+            quote_clip = apply_animation(quote_clip, animation, 450).with_start(VOICE_DELAY).with_duration(duration - VOICE_DELAY)
             clips.append(quote_clip)
 
-        # Author — appears after voice finishes quote
-        author_start = VOICE_DELAY + voice_duration - 3
+        # Author bottom banner configuration display
+        author_start = VOICE_DELAY + quote_duration + 0.3
         author_clip = TextClip(
-            text=f"— {author}\n\n",
-            font_size=36,
-            color="#FFD700",
-            font="DejaVuSans-Bold",
-            method="caption",
-            size=(700, None),
-            text_align="center",
-            stroke_color="black",
-            stroke_width=1
-        )
-        author_clip = author_clip.with_position(("center", 1100))
-        author_clip = author_clip.with_start(max(author_start, VOICE_DELAY))
-        author_clip = author_clip.with_duration(
-            duration - max(author_start, VOICE_DELAY))
+            text=f"— {author}\n\n", font_size=36, color="#FFD700", font="DejaVuSans-Bold",
+            method="caption", size=(700, None), text_align="center", stroke_color="black", stroke_width=1
+        ).with_position(("center", 1100)).with_start(max(author_start, VOICE_DELAY)).with_duration(duration - max(author_start, VOICE_DELAY))
         clips.append(author_clip)
 
-        # Subscribe watermark
+        # Fixed bottom watermarking banner display
         channel_clip = TextClip(
-            text="Subscribe for daily quotes\n\n",
-            font_size=26,
-            color="white",
-            font="DejaVuSans-Bold",
-            method="caption",
-            size=(700, None),
-            text_align="center",
-            stroke_color="black",
-            stroke_width=1
-        )
-        channel_clip = channel_clip.with_position(("center", 1600))
-        channel_clip = channel_clip.with_start(0)
-        channel_clip = channel_clip.with_duration(duration)
+            text="Subscribe for daily quotes\n\n", font_size=26, color="white", font="DejaVuSans-Bold",
+            method="caption", size=(700, None), text_align="center", stroke_color="black", stroke_width=1
+        ).with_position(("center", 1600)).with_start(0).with_duration(duration)
         clips.append(channel_clip)
 
-        # End screen
+        # System Outro Graphic Screen
         end_screen_clip = TextClip(
-            text="NEW VIDEO EVERY DAY\nSubscribe Now\n",
-            font_size=48,
-            color="#FFD700",
-            font="DejaVuSans-Bold",
-            method="caption",
-            size=(750, None),
-            text_align="center",
-            stroke_color="black",
-            stroke_width=2
-        )
-        end_screen_clip = end_screen_clip.with_position(("center", 900))
-        end_screen_clip = end_screen_clip.with_start(duration - 5)
-        end_screen_clip = end_screen_clip.with_duration(5)
+            text="NEW VIDEO EVERY DAY\nSubscribe Now\n", font_size=48, color="#FFD700", font="DejaVuSans-Bold",
+            method="caption", size=(750, None), text_align="center", stroke_color="black", stroke_width=2
+        ).with_position(("center", 900)).with_start(duration - 5).with_duration(5)
         clips.append(end_screen_clip)
 
-        # Bell reminder
+        # System End-screen notification reminder alert
         bell_clip = TextClip(
-            text="Turn on notifications\nso you never miss a quote\n",
-            font_size=32,
-            color="white",
-            font="DejaVuSans",
-            method="caption",
-            size=(700, None),
-            text_align="center",
-            stroke_color="black",
-            stroke_width=1
-        )
-        bell_clip = bell_clip.with_position(("center", 1300))
-        bell_clip = bell_clip.with_start(duration - 5)
-        bell_clip = bell_clip.with_duration(5)
+            text="Turn on notifications\nso you never miss a quote\n", font_size=32, color="white", font="DejaVuSans",
+            method="caption", size=(700, None), text_align="center", stroke_color="black", stroke_width=1
+        ).with_position(("center", 1300)).with_start(duration - 5).with_duration(5)
         clips.append(bell_clip)
 
         final_video = CompositeVideoClip(clips)
-        print("Subtitle style animations added!")
 
     except Exception as e:
-        print(f"Text animation failed: {e}")
+        print(f"Overlay mapping script fault intercepted: {e}")
         final_video = video
 
     output_path = "youtube_short.mp4"
-    final_video.write_videofile(
-        output_path,
-        fps=24,
-        codec="libx264",
-        audio_codec="aac"
-    )
+    final_video.write_videofile(output_path, fps=24, codec="libx264", audio_codec="aac")
 
-    # Cleanup
-    for f in [audio_path, timing_path,
-              "background_video.mp4", "vertical_quote.png"]:
+    # File array system cleanup
+    for f in [quote_audio_path, author_audio_path, timing_path, "background_video.mp4", "vertical_quote.png"]:
         if os.path.exists(f):
             os.remove(f)
 
