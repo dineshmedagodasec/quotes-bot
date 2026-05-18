@@ -286,7 +286,7 @@ def create_youtube_short(quote, author, image_path):
             "#00FF00",
         ]
 
-        for i, number in enumerate(["5", "4", "3", "2", "1"]):
+        for i, number in enumerate(["5\n", "4\n", "3\n", "2\n", "1\n"]):
             num_clip = TextClip(
                 text=number,
                 font_size=250,
@@ -304,7 +304,7 @@ def create_youtube_short(quote, author, image_path):
 
         # GO!
         go_clip = TextClip(
-            text="GO!",
+            text="GO!\n",
             font_size=200,
             color="#00FF00",
             font="LiberationSans-Bold",
