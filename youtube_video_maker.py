@@ -314,7 +314,7 @@ def create_youtube_short(quote, author, image_path):
             "#FFFFFF",
             "#FFFFFF",
             "#FFFFFF",
-            "#00FFFF",
+            "#FFFFFF",
         ]
 
         for i, number in enumerate(["5\n", "4\n", "3\n", "2\n", "1\n"]):
@@ -325,7 +325,7 @@ def create_youtube_short(quote, author, image_path):
                 font="LiberationSans-Bold",
                 method="label",
                 text_align="center",
-                stroke_color="",
+                stroke_color="white",
                 stroke_width=8
             )
             num_clip = num_clip.with_position(("center", 750))
