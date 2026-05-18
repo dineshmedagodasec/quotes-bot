@@ -280,9 +280,9 @@ def create_youtube_short(quote, author, image_path):
         # Countdown 5 to 1
         countdown_colors = [
             "#FF0000",
-            "#FF4500",
-            "#FF8C00",
-            "#FFD700",
+            "#FF0000",
+            "#FF0000",
+            "#FF0000",
             "#00FF00",
         ]
 
@@ -297,7 +297,7 @@ def create_youtube_short(quote, author, image_path):
                 stroke_color="black",
                 stroke_width=8
             )
-            num_clip = num_clip.with_position(("center", 750))
+            num_clip = num_clip.with_position(("center", 950))
             num_clip = num_clip.with_start(COUNTDOWN_START + i * COUNTDOWN_EACH)
             num_clip = num_clip.with_duration(COUNTDOWN_EACH)
             clips.append(num_clip)
