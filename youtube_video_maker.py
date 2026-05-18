@@ -157,39 +157,52 @@ async def generate_voice_with_timing(text, voice, audio_path, timing_path):
 
     return timing_data
 
-def split_into_sentences(timing_data):
-    """Split words into sentence-based subtitle chunks"""
-    chunks = []
-    current_chunk = []
+def generate_karaoke_chunks(timing_data):
+    """Groups words into sentences, then splits each sentence into cumulative word-by-word chunks."""
+    sentences = []
+    current_sentence = []
     
+    # 1. Group words by punctuation sentences
     for w in timing_data:
-        current_chunk.append(w)
-        # Check if the word ends with sentence-ending punctuation
+        current_sentence.append(w)
         word_text = w["word"].strip()
         if word_text.endswith(('.', '!', '?')):
-            chunk_text = ' '.join([word["word"] for word in current_chunk])
-            chunk_start = current_chunk[0]["start"]
-            chunk_end = current_chunk[-1]["start"] + current_chunk[-1]["duration"]
+            sentences.append(current_sentence)
+            current_sentence = []
+            
+    if current_sentence:
+        sentences.append(current_sentence)
+        
+    chunks = []
+    # 2. Convert sentences into cumulative word-by-word timestamps
+    for s_idx, sentence in enumerate(sentences):
+        if not sentence:
+            continue
+            
+        for w_idx in range(len(sentence)):
+            # Join words up to the current word index inside the active sentence
+            words_up_to_now = [word["word"] for word in sentence[:w_idx + 1]]
+            chunk_text = ' '.join(words_up_to_now)
+            
+            chunk_start = sentence[w_idx]["start"]
+            
+            # Determine end timing for this precise cumulative state
+            if w_idx < len(sentence) - 1:
+                # Changes the split visual layout when the next word starts
+                chunk_end = sentence[w_idx + 1]["start"]
+            else:
+                # Last word of the sentence: hangs until the next sentence begins
+                if s_idx < len(sentences) - 1 and sentences[s_idx + 1]:
+                    chunk_end = sentences[s_idx + 1][0]["start"]
+                else:
+                    chunk_end = sentence[w_idx]["start"] + sentence[w_idx]["duration"] + 1.5
+                    
             chunks.append({
                 "text": chunk_text,
                 "start": chunk_start,
-                "end": chunk_end,
-                "duration": chunk_end - chunk_start
+                "end": chunk_end
             })
-            current_chunk = []
             
-    # Fallback to handle any remaining words if text didn't end with punctuation
-    if current_chunk:
-        chunk_text = ' '.join([word["word"] for word in current_chunk])
-        chunk_start = current_chunk[0]["start"]
-        chunk_end = current_chunk[-1]["start"] + current_chunk[-1]["duration"]
-        chunks.append({
-            "text": chunk_text,
-            "start": chunk_start,
-            "end": chunk_end,
-            "duration": chunk_end - chunk_start
-        })
-        
     return chunks
 
 def create_youtube_short(quote, author, image_path):
@@ -319,18 +332,18 @@ def create_youtube_short(quote, author, image_path):
             stroke_color="black",
             stroke_width=2
         )
-        hook_clip = hook_clip.with_position(("center", 150))
+        hook_clip = hook_clip.with_position(("center", 250))
         hook_clip = hook_clip.with_start(0)
         hook_clip = hook_clip.with_duration(8)
         clips.append(hook_clip)
 
         # Countdown 5 to 1
         countdown_colors = [
-            "#FF0000",
-            "#FF4500",
-            "#FF8C00",
-            "#FFD700",
-            "#00FF00",
+            "#FFFFFF",
+            "#FFFFFF",
+            "#FFFFFF",
+            "#FFFFFF",
+            "#FFFFFF",
         ]
 
         for i, number in enumerate(["5\n", "4\n", "3\n", "2\n", "1\n"]):
@@ -367,21 +380,22 @@ def create_youtube_short(quote, author, image_path):
         go_clip = go_clip.with_duration(GO_DURATION)
         clips.append(go_clip)
 
-        # ✅ SUBTITLE STYLE — sentence chunks synced with voice
+        # ✅ SUBTITLE STYLE — Karaoke word-by-word accumulation within sentences
         if timing_data:
-            print(f"Creating subtitle clips...")
-            chunks = split_into_sentences(timing_data)
+            print(f"Creating karaoke-style subtitle clips...")
+            chunks = generate_karaoke_chunks(timing_data)
 
             for chunk in chunks:
                 # Add VOICE_DELAY offset to sync with delayed voice
                 chunk_start = chunk["start"] + VOICE_DELAY
-                chunk_dur = max(chunk["duration"], 0.5)
+                chunk_end = chunk["end"] + VOICE_DELAY
+                chunk_dur = max(chunk_end - chunk_start, 0.1)
 
                 # Skip if goes beyond video
                 if chunk_start >= duration:
                     break
 
-                # Wrap sentences nicely so they don't bleed out of the 1080x1920 boundaries
+                # Wrap text nicely so it doesn't bleed out of width limits
                 wrapped_text = textwrap.fill(chunk["text"], width=28) + "\n\n"
 
                 subtitle_clip = TextClip(
@@ -397,10 +411,10 @@ def create_youtube_short(quote, author, image_path):
                 )
                 subtitle_clip = subtitle_clip.with_position(("center", 700))
                 subtitle_clip = subtitle_clip.with_start(chunk_start)
-                subtitle_clip = subtitle_clip.with_duration(chunk_dur)
+                subtitle_clip = subtitle_clip.with_duration(min(chunk_dur, duration - chunk_start))
                 clips.append(subtitle_clip)
 
-            print(f"Added {len(chunks)} subtitle sentences!")
+            print(f"Added {len(chunks)} karaoke subtitle frames!")
 
         else:
             # Fallback — show full quote at once if no timing data
@@ -442,7 +456,7 @@ def create_youtube_short(quote, author, image_path):
         author_clip = TextClip(
             text=f"— {author}\n\n",
             font_size=36,
-            color="#FFD700",
+            color="#FFFFFF",
             font="DejaVuSans-Bold",
             method="caption",
             size=(700, None),
