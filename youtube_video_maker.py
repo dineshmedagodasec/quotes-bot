@@ -303,18 +303,18 @@ def create_youtube_short(quote, author, image_path):
             stroke_color="black",
             stroke_width=2
         )
-        hook_clip = hook_clip.with_position(("center", 150))
+        hook_clip = hook_clip.with_position(("center", 250))
         hook_clip = hook_clip.with_start(0)
         hook_clip = hook_clip.with_duration(8)
         clips.append(hook_clip)
 
         # Countdown 5 to 1
         countdown_colors = [
-            "#FF0000",
-            "#FF4500",
-            "#FF8C00",
-            "#FFD700",
-            "#00FF00",
+            "#FFFFFF",
+            "#FFFFFF",
+            "#FFFFFF",
+            "#FFFFFF",
+            "#00FFFF",
         ]
 
         for i, number in enumerate(["5\n", "4\n", "3\n", "2\n", "1\n"]):
@@ -325,7 +325,7 @@ def create_youtube_short(quote, author, image_path):
                 font="LiberationSans-Bold",
                 method="label",
                 text_align="center",
-                stroke_color="black",
+                stroke_color="",
                 stroke_width=8
             )
             num_clip = num_clip.with_position(("center", 750))
