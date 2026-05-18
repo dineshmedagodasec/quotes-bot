@@ -342,7 +342,7 @@ def create_youtube_short(quote, author, image_path):
             font="LiberationSans-Bold",
             method="label",
             text_align="center",
-            stroke_color="black",
+            stroke_color="00FF00",
             stroke_width=8
         )
         go_clip = go_clip.with_position(("center", 800))
