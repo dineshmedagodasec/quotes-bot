@@ -8,6 +8,7 @@ import random
 import textwrap
 import requests
 import numpy as np
+import json
 
 MUSIC_FILES = [
     "music/music_1.mp3",
@@ -134,25 +135,67 @@ def apply_animation(clip, animation, base_y):
         clip = clip.with_position(("center", base_y))
     return clip
 
-async def generate_voice(text, voice, output_path):
+async def generate_voice_with_timing(text, voice, audio_path, timing_path):
+    """Generate voice and capture word timing data"""
+    timing_data = []
     communicate = edge_tts.Communicate(text, voice)
-    await communicate.save(output_path)
+
+    with open(audio_path, "wb") as audio_file:
+        async for chunk in communicate.stream():
+            if chunk["type"] == "audio":
+                audio_file.write(chunk["data"])
+            elif chunk["type"] == "WordBoundary":
+                timing_data.append({
+                    "word": chunk["text"],
+                    "start": chunk["offset"] / 10000000,  # Convert to seconds
+                    "duration": chunk["duration"] / 10000000
+                })
+
+    # Save timing data
+    with open(timing_path, "w") as f:
+        json.dump(timing_data, f)
+
+    return timing_data
+
+def split_into_chunks(timing_data, words_per_chunk=4):
+    """Split words into subtitle chunks"""
+    chunks = []
+    i = 0
+    while i < len(timing_data):
+        chunk_words = timing_data[i:i + words_per_chunk]
+        if chunk_words:
+            chunk_text = ' '.join([w["word"] for w in chunk_words])
+            chunk_start = chunk_words[0]["start"]
+            chunk_end = chunk_words[-1]["start"] + chunk_words[-1]["duration"]
+            chunks.append({
+                "text": chunk_text,
+                "start": chunk_start,
+                "end": chunk_end,
+                "duration": chunk_end - chunk_start
+            })
+        i += words_per_chunk
+    return chunks
 
 def create_youtube_short(quote, author, image_path):
-    # Step 1: Generate voice
+    # Step 1: Generate voice with word timing
     selected_voice = random.choice(VOICES)
     print(f"Voice: {selected_voice}")
 
-    tts_text = f"{quote}... by {author}"
+    tts_text = f"{quote}. By {author}"
     audio_path = "quote_audio.mp3"
-    voice_duration = 20  # default
+    timing_path = "quote_timing.json"
+    voice_duration = 20
+    timing_data = []
 
-    # Try Edge TTS
     try:
-        asyncio.run(generate_voice(tts_text, selected_voice, audio_path))
-        print("Edge TTS voice generated!")
+        timing_data = asyncio.run(
+            generate_voice_with_timing(
+                tts_text, selected_voice, audio_path, timing_path
+            )
+        )
+        print(f"Edge TTS voice generated with {len(timing_data)} word timings!")
     except Exception as e:
-        print(f"Edge TTS failed: {e} — using gTTS")
+        print(f"Edge TTS failed: {e} — using gTTS fallback")
         try:
             from gtts import gTTS
             tts = gTTS(text=tts_text, lang='en', slow=False, tld='com.au')
@@ -165,11 +208,9 @@ def create_youtube_short(quote, author, image_path):
         if os.path.exists(audio_path):
             voice_audio = AudioFileClip(audio_path)
             voice_duration = voice_audio.duration
-            # Delay voice start by VOICE_DELAY seconds
             final_voice = voice_audio.with_start(VOICE_DELAY)
             print(f"Voice will start at: {VOICE_DELAY} seconds!")
         else:
-            print("Audio file not found!")
             final_voice = AudioClip(
                 make_frame=lambda t: np.zeros((2,)),
                 duration=30,
@@ -245,18 +286,8 @@ def create_youtube_short(quote, author, image_path):
     animation = random.choice(ANIMATIONS)
     print(f"Animation: {animation}")
 
-    # Step 6: Add text overlays with countdown
+    # Step 6: Add text overlays
     try:
-        lines = quote.split('\n')
-        wrapped_lines = []
-        for line in lines:
-            if len(line) > 25:
-                wrapped = textwrap.fill(line, width=25)
-                wrapped_lines.append(wrapped)
-            else:
-                wrapped_lines.append(line)
-        quote_text = '\n'.join(wrapped_lines) + '\n\n'
-
         clips = [video]
 
         # Hook text
@@ -279,14 +310,14 @@ def create_youtube_short(quote, author, image_path):
 
         # Countdown 5 to 1
         countdown_colors = [
-            "#FFFFFF",
-            "#FFFFFF",
-            "#FFFFFF",
-            "#FFFFFF",
-            "#FFFFFF",
+            "#FF0000",
+            "#FF4500",
+            "#FF8C00",
+            "#FFD700",
+            "#00FF00",
         ]
 
-        for i, number in enumerate(["5\n", "4\n", "3\n", "2\n", "1\n"]):
+        for i, number in enumerate(["5", "4", "3", "2", "1"]):
             num_clip = TextClip(
                 text=number,
                 font_size=250,
@@ -297,14 +328,15 @@ def create_youtube_short(quote, author, image_path):
                 stroke_color="black",
                 stroke_width=8
             )
-            num_clip = num_clip.with_position(("center", 650))
-            num_clip = num_clip.with_start(COUNTDOWN_START + i * COUNTDOWN_EACH)
+            num_clip = num_clip.with_position(("center", 750))
+            num_clip = num_clip.with_start(
+                COUNTDOWN_START + i * COUNTDOWN_EACH)
             num_clip = num_clip.with_duration(COUNTDOWN_EACH)
             clips.append(num_clip)
 
         # GO!
         go_clip = TextClip(
-            text="GO!\n",
+            text="GO!",
             font_size=200,
             color="#00FF00",
             font="LiberationSans-Bold",
@@ -313,50 +345,96 @@ def create_youtube_short(quote, author, image_path):
             stroke_color="black",
             stroke_width=8
         )
-        go_clip = go_clip.with_position(("center", 650))
+        go_clip = go_clip.with_position(("center", 800))
         go_clip = go_clip.with_start(
             COUNTDOWN_START + COUNTDOWN_NUMBERS * COUNTDOWN_EACH)
         go_clip = go_clip.with_duration(GO_DURATION)
         clips.append(go_clip)
 
-        # Quote appears after countdown
-        quote_start = VOICE_DELAY
-        if len(quote) > 100:
-            q_font_size = 40
+        # ✅ SUBTITLE STYLE — word chunks synced with voice
+        if timing_data:
+            print(f"Creating subtitle clips...")
+            chunks = split_into_chunks(timing_data, words_per_chunk=4)
+
+            for chunk in chunks:
+                # Add VOICE_DELAY offset to sync with delayed voice
+                chunk_start = chunk["start"] + VOICE_DELAY
+                chunk_dur = max(chunk["duration"], 0.5)
+
+                # Skip if goes beyond video
+                if chunk_start >= duration:
+                    break
+
+                subtitle_clip = TextClip(
+                    text=chunk["text"] + "\n\n",
+                    font_size=58,
+                    color="white",
+                    font="LiberationSans-Bold",
+                    method="caption",
+                    size=(850, None),
+                    text_align="center",
+                    stroke_color="black",
+                    stroke_width=2
+                )
+                subtitle_clip = subtitle_clip.with_position(("center", 700))
+                subtitle_clip = subtitle_clip.with_start(chunk_start)
+                subtitle_clip = subtitle_clip.with_duration(chunk_dur)
+                clips.append(subtitle_clip)
+
+            print(f"Added {len(chunks)} subtitle chunks!")
+
         else:
-            q_font_size = 55
+            # Fallback — show full quote at once if no timing data
+            print("No timing data — showing full quote")
+            lines = quote.split('\n')
+            wrapped_lines = []
+            for line in lines:
+                if len(line) > 25:
+                    wrapped = textwrap.fill(line, width=25)
+                    wrapped_lines.append(wrapped)
+                else:
+                    wrapped_lines.append(line)
+            quote_text = '\n'.join(wrapped_lines) + '\n\n'
 
-        quote_clip = TextClip(
-            text=quote_text,
-            font_size=q_font_size,
-            color="white",
-            font="LiberationSans-Bold",
-            method="caption",
-            size=(750, None),
-            text_align="center",
-            stroke_color="black",
-            stroke_width=1
-        )
-        quote_clip = apply_animation(quote_clip, animation, 500)
-        quote_clip = quote_clip.with_start(quote_start)
-        quote_clip = quote_clip.with_duration(duration - quote_start)
-        clips.append(quote_clip)
+            quote_start = VOICE_DELAY
+            if len(quote) > 100:
+                q_font_size = 40
+            else:
+                q_font_size = 55
 
-        # Author
+            quote_clip = TextClip(
+                text=quote_text,
+                font_size=q_font_size,
+                color="white",
+                font="LiberationSans-Bold",
+                method="caption",
+                size=(750, None),
+                text_align="center",
+                stroke_color="black",
+                stroke_width=1
+            )
+            quote_clip = apply_animation(quote_clip, animation, 500)
+            quote_clip = quote_clip.with_start(quote_start)
+            quote_clip = quote_clip.with_duration(duration - quote_start)
+            clips.append(quote_clip)
+
+        # Author — appears after voice finishes quote
+        author_start = VOICE_DELAY + voice_duration - 3
         author_clip = TextClip(
             text=f"— {author}\n\n",
-            font_size=32,
+            font_size=36,
             color="#FFD700",
-            font="DejaVuSans",
+            font="DejaVuSans-Bold",
             method="caption",
             size=(700, None),
             text_align="center",
             stroke_color="black",
             stroke_width=1
         )
-        author_clip = apply_animation(author_clip, animation, 1200)
-        author_clip = author_clip.with_start(quote_start + 2)
-        author_clip = author_clip.with_duration(duration - quote_start - 2)
+        author_clip = author_clip.with_position(("center", 1100))
+        author_clip = author_clip.with_start(max(author_start, VOICE_DELAY))
+        author_clip = author_clip.with_duration(
+            duration - max(author_start, VOICE_DELAY))
         clips.append(author_clip)
 
         # Subscribe watermark
@@ -411,7 +489,7 @@ def create_youtube_short(quote, author, image_path):
         clips.append(bell_clip)
 
         final_video = CompositeVideoClip(clips)
-        print("Countdown + animations added!")
+        print("Subtitle style animations added!")
 
     except Exception as e:
         print(f"Text animation failed: {e}")
@@ -426,7 +504,8 @@ def create_youtube_short(quote, author, image_path):
     )
 
     # Cleanup
-    for f in [audio_path, "background_video.mp4", "vertical_quote.png"]:
+    for f in [audio_path, timing_path,
+              "background_video.mp4", "vertical_quote.png"]:
         if os.path.exists(f):
             os.remove(f)
 
