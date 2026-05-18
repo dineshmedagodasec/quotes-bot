@@ -157,23 +157,39 @@ async def generate_voice_with_timing(text, voice, audio_path, timing_path):
 
     return timing_data
 
-def split_into_chunks(timing_data, words_per_chunk=4):
-    """Split words into subtitle chunks"""
+def split_into_sentences(timing_data):
+    """Split words into sentence-based subtitle chunks"""
     chunks = []
-    i = 0
-    while i < len(timing_data):
-        chunk_words = timing_data[i:i + words_per_chunk]
-        if chunk_words:
-            chunk_text = ' '.join([w["word"] for w in chunk_words])
-            chunk_start = chunk_words[0]["start"]
-            chunk_end = chunk_words[-1]["start"] + chunk_words[-1]["duration"]
+    current_chunk = []
+    
+    for w in timing_data:
+        current_chunk.append(w)
+        # Check if the word ends with sentence-ending punctuation
+        word_text = w["word"].strip()
+        if word_text.endswith(('.', '!', '?')):
+            chunk_text = ' '.join([word["word"] for word in current_chunk])
+            chunk_start = current_chunk[0]["start"]
+            chunk_end = current_chunk[-1]["start"] + current_chunk[-1]["duration"]
             chunks.append({
                 "text": chunk_text,
                 "start": chunk_start,
                 "end": chunk_end,
                 "duration": chunk_end - chunk_start
             })
-        i += words_per_chunk
+            current_chunk = []
+            
+    # Fallback to handle any remaining words if text didn't end with punctuation
+    if current_chunk:
+        chunk_text = ' '.join([word["word"] for word in current_chunk])
+        chunk_start = current_chunk[0]["start"]
+        chunk_end = current_chunk[-1]["start"] + current_chunk[-1]["duration"]
+        chunks.append({
+            "text": chunk_text,
+            "start": chunk_start,
+            "end": chunk_end,
+            "duration": chunk_end - chunk_start
+        })
+        
     return chunks
 
 def create_youtube_short(quote, author, image_path):
@@ -351,10 +367,10 @@ def create_youtube_short(quote, author, image_path):
         go_clip = go_clip.with_duration(GO_DURATION)
         clips.append(go_clip)
 
-        # ✅ SUBTITLE STYLE — word chunks synced with voice
+        # ✅ SUBTITLE STYLE — sentence chunks synced with voice
         if timing_data:
             print(f"Creating subtitle clips...")
-            chunks = split_into_chunks(timing_data, words_per_chunk=4)
+            chunks = split_into_sentences(timing_data)
 
             for chunk in chunks:
                 # Add VOICE_DELAY offset to sync with delayed voice
@@ -365,8 +381,11 @@ def create_youtube_short(quote, author, image_path):
                 if chunk_start >= duration:
                     break
 
+                # Wrap sentences nicely so they don't bleed out of the 1080x1920 boundaries
+                wrapped_text = textwrap.fill(chunk["text"], width=28) + "\n\n"
+
                 subtitle_clip = TextClip(
-                    text=chunk["text"] + "\n\n",
+                    text=wrapped_text,
                     font_size=58,
                     color="white",
                     font="LiberationSans-Bold",
@@ -381,7 +400,7 @@ def create_youtube_short(quote, author, image_path):
                 subtitle_clip = subtitle_clip.with_duration(chunk_dur)
                 clips.append(subtitle_clip)
 
-            print(f"Added {len(chunks)} subtitle chunks!")
+            print(f"Added {len(chunks)} subtitle sentences!")
 
         else:
             # Fallback — show full quote at once if no timing data
