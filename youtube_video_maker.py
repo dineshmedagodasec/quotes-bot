@@ -398,9 +398,9 @@ def create_youtube_short(quote, author, image_path):
 
             quote_start = VOICE_DELAY
             if len(quote) > 100:
-                q_font_size = 40
-            else:
                 q_font_size = 55
+            else:
+                q_font_size = 60
 
             quote_clip = TextClip(
                 text=quote_text,
