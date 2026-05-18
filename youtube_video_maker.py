@@ -157,14 +157,14 @@ async def generate_voice_with_timing(text, voice, audio_path, timing_path):
 
     return timing_data
 
-def split_into_chunks(timing_data, words_per_chunk=4):
-    """Split words into subtitle chunks"""
+def split_into_chunks(timing_data, words_per_chunk=2):
+    """Split words into fast, punchy karaoke-style subtitle chunks"""
     chunks = []
     i = 0
     while i < len(timing_data):
         chunk_words = timing_data[i:i + words_per_chunk]
         if chunk_words:
-            chunk_text = ' '.join([w["word"] for w in chunk_words])
+            chunk_text = ' '.join([w["word"] for w in chunk_words]).upper()
             chunk_start = chunk_words[0]["start"]
             chunk_end = chunk_words[-1]["start"] + chunk_words[-1]["duration"]
             chunks.append({
@@ -351,32 +351,32 @@ def create_youtube_short(quote, author, image_path):
         go_clip = go_clip.with_duration(GO_DURATION)
         clips.append(go_clip)
 
-        # ✅ SUBTITLE STYLE — word chunks synced with voice
+        # ✅ SUBTITLE STYLE — Rapid 1-2 word flashes that wipe clean instantly
         if timing_data:
             print(f"Creating subtitle clips...")
-            chunks = split_into_chunks(timing_data, words_per_chunk=4)
+            chunks = split_into_chunks(timing_data, words_per_chunk=2)
 
             for chunk in chunks:
                 # Add VOICE_DELAY offset to sync with delayed voice
                 chunk_start = chunk["start"] + VOICE_DELAY
-                chunk_dur = max(chunk["duration"], 0.5)
+                chunk_dur = max(chunk["duration"], 0.3)
 
                 # Skip if goes beyond video
                 if chunk_start >= duration:
                     break
 
                 subtitle_clip = TextClip(
-                    text=chunk["text"] + "\n\n",
-                    font_size=58,
+                    text=chunk["text"],
+                    font_size=75,
                     color="white",
                     font="LiberationSans-Bold",
                     method="caption",
-                    size=(850, None),
+                    size=(900, None),
                     text_align="center",
                     stroke_color="black",
-                    stroke_width=2
+                    stroke_width=4
                 )
-                subtitle_clip = subtitle_clip.with_position(("center", 700))
+                subtitle_clip = subtitle_clip.with_position(("center", "center"))
                 subtitle_clip = subtitle_clip.with_start(chunk_start)
                 subtitle_clip = subtitle_clip.with_duration(chunk_dur)
                 clips.append(subtitle_clip)
