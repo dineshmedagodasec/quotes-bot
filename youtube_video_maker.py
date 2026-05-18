@@ -9,6 +9,7 @@ import textwrap
 import requests
 import numpy as np
 import json
+import re
 
 MUSIC_FILES = [
     "music/music_1.mp3",
@@ -157,45 +158,48 @@ async def generate_voice_with_timing(text, voice, audio_path, timing_path):
 
     return timing_data
 
-def generate_karaoke_chunks(timing_data):
-    """Groups words into sentences, then splits each sentence into cumulative word-by-word chunks."""
-    sentences = []
-    current_sentence = []
+def generate_karaoke_chunks(timing_data, quote, author):
+    """Groups words into actual sentences using the original quote structure, 
+    then splits each sentence into clear word-by-word cumulative chunks."""
     
-    # 1. Group words by punctuation sentences
-    for w in timing_data:
-        current_sentence.append(w)
-        word_text = w["word"].strip()
-        if word_text.endswith(('.', '!', '?')):
-            sentences.append(current_sentence)
-            current_sentence = []
-            
-    if current_sentence:
-        sentences.append(current_sentence)
-        
+    # 1. Break down the text structure matching your string: "{quote}. By {author}"
+    raw_sentences = re.split(r'(?<=[.!?])\s+', quote.strip())
+    raw_sentences.append(f"By {author}")
+    sentences_text = [s.strip() for s in raw_sentences if s.strip()]
+    
     chunks = []
-    # 2. Convert sentences into cumulative word-by-word timestamps
-    for s_idx, sentence in enumerate(sentences):
-        if not sentence:
+    t_idx = 0
+    
+    for s_text in sentences_text:
+        s_tokens = s_text.split()
+        if not s_tokens:
             continue
             
-        for w_idx in range(len(sentence)):
-            # Join words up to the current word index inside the active sentence
-            words_up_to_now = [word["word"] for word in sentence[:w_idx + 1]]
-            chunk_text = ' '.join(words_up_to_now)
+        sentence_timing = []
+        # Consume timing entries for words belonging to this sentence context
+        for token in s_tokens:
+            if t_idx < len(timing_data):
+                sentence_timing.append(timing_data[t_idx])
+                t_idx += 1
+                
+        if not sentence_timing:
+            continue
             
-            chunk_start = sentence[w_idx]["start"]
+        # 2. Convert sentence words into dynamic word-by-word timestamps
+        for i in range(len(sentence_timing)):
+            # Build text sequentially up to the current word inside this active sentence
+            chunk_text = " ".join(s_tokens[:i + 1])
+            chunk_start = sentence_timing[i]["start"]
             
-            # Determine end timing for this precise cumulative state
-            if w_idx < len(sentence) - 1:
-                # Changes the split visual layout when the next word starts
-                chunk_end = sentence[w_idx + 1]["start"]
+            # Sentence screen wipe: cuts off cleanly when the next word arrives
+            if i < len(sentence_timing) - 1:
+                chunk_end = sentence_timing[i + 1]["start"]
             else:
-                # Last word of the sentence: hangs until the next sentence begins
-                if s_idx < len(sentences) - 1 and sentences[s_idx + 1]:
-                    chunk_end = sentences[s_idx + 1][0]["start"]
+                # End of sentence: Hangs clean until next sentence begins or audio drops
+                if t_idx < len(timing_data):
+                    chunk_end = timing_data[t_idx]["start"]
                 else:
-                    chunk_end = sentence[w_idx]["start"] + sentence[w_idx]["duration"] + 1.5
+                    chunk_end = sentence_timing[i]["start"] + sentence_timing[i]["duration"] + 1.0
                     
             chunks.append({
                 "text": chunk_text,
@@ -338,19 +342,11 @@ def create_youtube_short(quote, author, image_path):
         clips.append(hook_clip)
 
         # Countdown 5 to 1
-        countdown_colors = [
-            "#FFFFFF",
-            "#FFFFFF",
-            "#FFFFFF",
-            "#FFFFFF",
-            "#FFFFFF",
-        ]
-
         for i, number in enumerate(["5\n", "4\n", "3\n", "2\n", "1\n"]):
             num_clip = TextClip(
                 text=number,
                 font_size=250,
-                color=countdown_colors[i],
+                color="#FFFFFF",
                 font="LiberationSans-Bold",
                 method="label",
                 text_align="center",
@@ -358,8 +354,7 @@ def create_youtube_short(quote, author, image_path):
                 stroke_width=8
             )
             num_clip = num_clip.with_position(("center", 750))
-            num_clip = num_clip.with_start(
-                COUNTDOWN_START + i * COUNTDOWN_EACH)
+            num_clip = num_clip.with_start(COUNTDOWN_START + i * COUNTDOWN_EACH)
             num_clip = num_clip.with_duration(COUNTDOWN_EACH)
             clips.append(num_clip)
 
@@ -375,27 +370,23 @@ def create_youtube_short(quote, author, image_path):
             stroke_width=8
         )
         go_clip = go_clip.with_position(("center", 800))
-        go_clip = go_clip.with_start(
-            COUNTDOWN_START + COUNTDOWN_NUMBERS * COUNTDOWN_EACH)
+        go_clip = go_clip.with_start(COUNTDOWN_START + COUNTDOWN_NUMBERS * COUNTDOWN_EACH)
         go_clip = go_clip.with_duration(GO_DURATION)
         clips.append(go_clip)
 
         # ✅ SUBTITLE STYLE — Karaoke word-by-word accumulation within sentences
         if timing_data:
             print(f"Creating karaoke-style subtitle clips...")
-            chunks = generate_karaoke_chunks(timing_data)
+            chunks = generate_karaoke_chunks(timing_data, quote, author)
 
             for chunk in chunks:
-                # Add VOICE_DELAY offset to sync with delayed voice
                 chunk_start = chunk["start"] + VOICE_DELAY
                 chunk_end = chunk["end"] + VOICE_DELAY
                 chunk_dur = max(chunk_end - chunk_start, 0.1)
 
-                # Skip if goes beyond video
                 if chunk_start >= duration:
                     break
 
-                # Wrap text nicely so it doesn't bleed out of width limits
                 wrapped_text = textwrap.fill(chunk["text"], width=28) + "\n\n"
 
                 subtitle_clip = TextClip(
@@ -418,22 +409,13 @@ def create_youtube_short(quote, author, image_path):
 
         else:
             # Fallback — show full quote at once if no timing data
-            print("No timing data — showing full quote")
+            print("No timing data available — showing full quote at once")
             lines = quote.split('\n')
-            wrapped_lines = []
-            for line in lines:
-                if len(line) > 25:
-                    wrapped = textwrap.fill(line, width=25)
-                    wrapped_lines.append(wrapped)
-                else:
-                    wrapped_lines.append(line)
+            wrapped_lines = [textwrap.fill(line, width=25) if len(line) > 25 else line for line in lines]
             quote_text = '\n'.join(wrapped_lines) + '\n\n'
 
             quote_start = VOICE_DELAY
-            if len(quote) > 100:
-                q_font_size = 40
-            else:
-                q_font_size = 55
+            q_font_size = 40 if len(quote) > 100 else 55
 
             quote_clip = TextClip(
                 text=quote_text,
@@ -466,8 +448,7 @@ def create_youtube_short(quote, author, image_path):
         )
         author_clip = author_clip.with_position(("center", 1100))
         author_clip = author_clip.with_start(max(author_start, VOICE_DELAY))
-        author_clip = author_clip.with_duration(
-            duration - max(author_start, VOICE_DELAY))
+        author_clip = author_clip.with_duration(duration - max(author_start, VOICE_DELAY))
         clips.append(author_clip)
 
         # Subscribe watermark
@@ -537,8 +518,7 @@ def create_youtube_short(quote, author, image_path):
     )
 
     # Cleanup
-    for f in [audio_path, timing_path,
-              "background_video.mp4", "vertical_quote.png"]:
+    for f in [audio_path, timing_path, "background_video.mp4", "vertical_quote.png"]:
         if os.path.exists(f):
             os.remove(f)
 
