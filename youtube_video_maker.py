@@ -299,7 +299,7 @@ def create_youtube_short(quote, author, image_path):
             stroke_color="black",
             stroke_width=8
         )
-        go_clip = go_clip.with_position(("center", 800))
+        go_clip = go_clip.with_position(("center", 850))
         go_clip = go_clip.with_start(COUNTDOWN_START + COUNTDOWN_NUMBERS * COUNTDOWN_EACH)
         go_clip = go_clip.with_duration(GO_DURATION)
         clips.append(go_clip)
