@@ -7,6 +7,7 @@ on:
     - cron: '0 22 * * *'   # 5:00 PM US Eastern
     - cron: '0 1 * * *'    # 8:00 PM US Eastern
   workflow_dispatch:
+
 jobs:
   post:
     runs-on: ubuntu-latest
@@ -14,12 +15,26 @@ jobs:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - uses: actions/checkout@v4
+      
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+
+      # ✅ STEP 1: Install ImageMagick and open-source system fonts
+      - name: Install System Dependencies (ImageMagick & Fonts)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y imagemagick gsfonts xfonts-base xfonts-75dpi
+
+      # ✅ STEP 2: Override ImageMagick's default Linux security policy restriction for MoviePy
+      - name: Configure ImageMagick Permissions Policy
+        run: |
+          sudo sed -i 's/domain="coder" rights="none"/domain="coder" rights="read|write"/g' /etc/ImageMagick-6/policy.xml
+
       - name: Install dependencies
         run: |
           pip install requests Pillow python-dotenv moviepy gTTS edge-tts google-api-python-client google-auth-httplib2 google-auth-oauthlib
+
       - name: Run bot
         run: python main.py
         env:
