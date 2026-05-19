@@ -414,7 +414,7 @@ def create_youtube_short(quote, author, image_path):
                     text=wrapped_text,
                     font_size=65,
                     color="white",
-                    font="Arial-Bold",
+                    font="LiberationSans-Bold",
                     method="caption",
                     size=(900, None),
                     text_align="center",
