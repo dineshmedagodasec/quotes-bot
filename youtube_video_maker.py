@@ -139,7 +139,7 @@ async def generate_voice_with_timing(text, voice, audio_path, timing_path):
     """Generate voice with a custom natural speed rate and capture word timing data"""
     timing_data = []
     
-    # SSML structure to slow voice rate down by 12% to remove robotic tones
+    # SSML structure to slow voice rate down by 12% for a smooth, elegant delivery
     ssml_text = f"""
     <speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='en-US'>
         <voice name='{voice}'>
@@ -176,22 +176,12 @@ def split_into_chunks(timing_data, words_per_chunk=2):
             chunk_text = ' '.join([w["word"] for w in chunk_words]).upper()
             chunk_start = chunk_words[0]["start"]
             chunk_end = chunk_words[-1]["start"] + chunk_words[-1]["duration"]
-            
-            # Map tracking data for progressive highlighting
-            word_details = []
-            for w in chunk_words:
-                word_details.append({
-                    "word": w["word"].upper(),
-                    "start": w["start"],
-                    "end": w["start"] + w["duration"]
-                })
                 
             chunks.append({
                 "text": chunk_text,
                 "start": chunk_start,
                 "end": chunk_end,
-                "duration": chunk_end - chunk_start,
-                "words": word_details
+                "duration": chunk_end - chunk_start
             })
         i += words_per_chunk
     return chunks
@@ -387,7 +377,7 @@ def create_youtube_short(quote, author, image_path):
                     "duration": estimated_word_duration
                 })
 
-        # ✅ SUBTITLE STYLE — Rapid 1-2 word flashes with Progressive Highlighting
+        # Subtitles — Clean, elegant white 1-2 word flashes tracked perfectly to speech
         if timing_data:
             print(f"Creating subtitle clips...")
             chunks = split_into_chunks(timing_data, words_per_chunk=2)
@@ -399,8 +389,7 @@ def create_youtube_short(quote, author, image_path):
                 if chunk_start >= duration:
                     break
 
-                # Base Layer: Flat White Text
-                base_subtitle = TextClip(
+                subtitle_clip = TextClip(
                     text=chunk["text"] + "\n",
                     font_size=75,
                     color="white",
@@ -411,36 +400,12 @@ def create_youtube_short(quote, author, image_path):
                     stroke_color="black",
                     stroke_width=4
                 )
-                base_subtitle = base_subtitle.with_position(("center", "center"))
-                base_subtitle = base_subtitle.with_start(chunk_start)
-                base_subtitle = base_subtitle.with_duration(chunk_dur)
-                clips.append(base_subtitle)
+                subtitle_clip = subtitle_clip.with_position(("center", "center"))
+                subtitle_clip = subtitle_clip.with_start(chunk_start)
+                subtitle_clip = subtitle_clip.with_duration(chunk_dur)
+                clips.append(subtitle_clip)
 
-                # Progressive Layer: Micro-target active word to paint Sky Blue
-                for word_info in chunk["words"]:
-                    w_start = word_info["start"] + VOICE_DELAY
-                    w_dur = word_info["end"] - word_info["start"]
-                    
-                    if w_start >= duration:
-                        break
-
-                    highlight_clip = TextClip(
-                        text=word_info["word"] + "\n",
-                        font_size=75,
-                        color="#87CEEB",  # Updated to Sky Blue
-                        font="LiberationSans-Bold",
-                        method="caption",
-                        size=(900, None),
-                        text_align="center",
-                        stroke_color="black",
-                        stroke_width=4
-                    )
-                    highlight_clip = highlight_clip.with_position(("center", "center"))
-                    highlight_clip = highlight_clip.with_start(w_start)
-                    highlight_clip = highlight_clip.with_duration(max(w_dur, 0.15))
-                    clips.append(highlight_clip)
-
-            print(f"Added {len(chunks)} highlighted subtitle chunks!")
+            print(f"Added {len(chunks)} subtitle chunks!")
 
         # Display full wrapped text quote block 1 second after voice ends
         full_quote_start = VOICE_DELAY + voice_duration + 1.0
