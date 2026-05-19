@@ -9,7 +9,6 @@ import textwrap
 import requests
 import numpy as np
 import json
-import re
 
 MUSIC_FILES = [
     "music/music_1.mp3",
@@ -146,128 +145,80 @@ async def generate_voice_with_timing(text, voice, audio_path, timing_path):
             if chunk["type"] == "audio":
                 audio_file.write(chunk["data"])
             elif chunk["type"] == "WordBoundary":
-                timing_data.append({
-                    "word": chunk["text"],
-                    "start": chunk["offset"] / 10000000,
-                    "duration": chunk["duration"] / 10000000
-                })
+                # Strip out punctuation markers cleanly to stop word chunk grouping faults
+                clean_word = chunk["text"].strip(".,!?;:\"()[]")
+                if clean_word:
+                    timing_data.append({
+                        "word": clean_word,
+                        "start": chunk["offset"] / 10000000,  # Convert to seconds
+                        "duration": chunk["duration"] / 10000000
+                    })
 
+    # Save timing data
     with open(timing_path, "w") as f:
         json.dump(timing_data, f)
 
     return timing_data
 
-def split_into_sentences(timing_data, quote):
-    """Split timing data into sentence chunks matching the quote sentences"""
-    if not timing_data:
-        return []
-
-    # Split quote into sentences
-    sentences = re.split(r'(?<=[.!?,])\s+|(?<=\n)', quote.strip())
-    sentences = [s.strip() for s in sentences if s.strip()]
-
-    # If no sentence breaks found split into chunks of 5 words
-    if len(sentences) <= 1:
-        sentences = []
-        words = quote.strip().split()
-        chunk_size = 5
-        for i in range(0, len(words), chunk_size):
-            sentences.append(' '.join(words[i:i + chunk_size]))
-
-    print(f"Quote sentences: {sentences}")
-
+def split_into_chunks(timing_data, words_per_chunk=2):
+    """Split words into fast, punchy karaoke-style subtitle chunks"""
     chunks = []
-    timing_index = 0
-    all_timing_words = [w["word"].lower().strip('.,!?') for w in timing_data]
-
-    for sentence in sentences:
-        sentence_words = sentence.lower().split()
-        sentence_words_clean = [w.strip('.,!?') for w in sentence_words]
-
-        if not sentence_words_clean:
-            continue
-
-        # Find start of this sentence in timing data
-        start_idx = None
-        for j in range(timing_index, len(all_timing_words)):
-            if all_timing_words[j] == sentence_words_clean[0]:
-                start_idx = j
-                break
-
-        if start_idx is None:
-            continue
-
-        # Find end of this sentence
-        end_idx = min(
-            start_idx + len(sentence_words_clean) - 1,
-            len(timing_data) - 1
-        )
-
-        chunk_start = timing_data[start_idx]["start"]
-        chunk_end = (timing_data[end_idx]["start"] +
-                     timing_data[end_idx]["duration"])
-
-        chunks.append({
-            "text": sentence,
-            "start": chunk_start,
-            "end": chunk_end,
-            "duration": chunk_end - chunk_start
-        })
-
-        timing_index = end_idx + 1
-
+    i = 0
+    while i < len(timing_data):
+        chunk_words = timing_data[i:i + words_per_chunk]
+        if chunk_words:
+            chunk_text = ' '.join([w["word"] for w in chunk_words]).upper()
+            chunk_start = chunk_words[0]["start"]
+            chunk_end = chunk_words[-1]["start"] + chunk_words[-1]["duration"]
+            chunks.append({
+                "text": chunk_text,
+                "start": chunk_start,
+                "end": chunk_end,
+                "duration": chunk_end - chunk_start
+            })
+        i += words_per_chunk
     return chunks
 
 def create_youtube_short(quote, author, image_path):
+    # Step 1: Generate voice with word timing
     selected_voice = random.choice(VOICES)
     print(f"Voice: {selected_voice}")
 
-    quote_audio_path = "quote_only.mp3"
-    author_audio_path = "author_only.mp3"
-    timing_path = "quote_timing.json"
+    # Clean the raw text data inside Step 1 to keep text chunks separated from the author profile
+    if " - " in quote: quote = quote.split(" - ")[0]
+    if "—" in quote: quote = quote.split("—")[0]
+    quote = quote.replace('\n', ' ').replace('"', '').strip()
+    author = author.replace('-', '').replace('—', '').strip()
 
-    quote_duration = 0
-    author_duration = 0
+    tts_text = f"{quote}"  # <-- FIXED: Removed author string addition here so it doesn't chunk!
+    audio_path = "quote_audio.mp3"
+    timing_path = "quote_timing.json"
+    voice_duration = 20
     timing_data = []
 
-    # Step 1: Generate voice with timing
     try:
         timing_data = asyncio.run(
             generate_voice_with_timing(
-                quote, selected_voice, quote_audio_path, timing_path)
+                tts_text, selected_voice, audio_path, timing_path
+            )
         )
-        print(f"Edge TTS quote generated with {len(timing_data)} word timings!")
-
-        communicate_author = edge_tts.Communicate(
-            f"By {author}", selected_voice)
-        asyncio.run(communicate_author.save(author_audio_path))
-
+        print(f"Edge TTS voice generated with {len(timing_data)} word timings!")
     except Exception as e:
         print(f"Edge TTS failed: {e} — using gTTS fallback")
         try:
             from gtts import gTTS
-            tts_full = gTTS(
-                text=f"{quote}. By {author}", lang='en', slow=False)
-            tts_full.save(quote_audio_path)
+            tts = gTTS(text=tts_text, lang='en', slow=False, tld='com.au')
+            tts.save(audio_path)
         except Exception as e2:
             print(f"gTTS also failed: {e2}")
 
-    # Build combined voice audio
-    audio_clips_to_mix = []
+    # Load voice and delay using with_start
     try:
-        if os.path.exists(quote_audio_path):
-            q_audio = AudioFileClip(quote_audio_path)
-            quote_duration = q_audio.duration
-            audio_clips_to_mix.append(q_audio.with_start(VOICE_DELAY))
-
-            if os.path.exists(author_audio_path):
-                a_audio = AudioFileClip(author_audio_path)
-                author_duration = a_audio.duration
-                author_start_time = VOICE_DELAY + quote_duration + 0.5
-                audio_clips_to_mix.append(
-                    a_audio.with_start(author_start_time))
-
-            final_voice = CompositeAudioClip(audio_clips_to_mix)
+        if os.path.exists(audio_path):
+            voice_audio = AudioFileClip(audio_path)
+            voice_duration = voice_audio.duration
+            final_voice = voice_audio.with_start(VOICE_DELAY)
+            print(f"Voice will start at: {VOICE_DELAY} seconds!")
         else:
             final_voice = AudioClip(
                 make_frame=lambda t: np.zeros((2,)),
@@ -275,7 +226,7 @@ def create_youtube_short(quote, author, image_path):
                 fps=44100
             )
     except Exception as e:
-        print(f"Voice arrangement failed: {e}")
+        print(f"Voice loading failed: {e}")
         final_voice = AudioClip(
             make_frame=lambda t: np.zeros((2,)),
             duration=30,
@@ -283,12 +234,11 @@ def create_youtube_short(quote, author, image_path):
         )
 
     # Step 2: Set duration
-    total_voice_sequence = quote_duration + author_duration + 0.5
-    duration = max(VOICE_DELAY + total_voice_sequence + 4, 40)
+    duration = max(VOICE_DELAY + voice_duration + 5, 40)
     duration = min(duration, 59)
     print(f"Duration: {duration} seconds")
 
-    # Step 3: Music
+    # Step 3: Pick random music
     music_file = random.choice(MUSIC_FILES)
     print(f"Music: {music_file}")
 
@@ -301,7 +251,7 @@ def create_youtube_short(quote, author, image_path):
         print(f"Music failed: {e}")
         final_audio = final_voice
 
-    # Step 4: Background video
+    # Step 4: Get background video
     bg_video_path = get_pexels_video(quote)
     video = None
 
@@ -325,8 +275,8 @@ def create_youtube_short(quote, author, image_path):
                 color=[0, 0, 0],
                 duration=duration
             ).with_opacity(0.5)
-            video = CompositeVideoClip(
-                [bg_video, overlay]).with_audio(final_audio)
+            video = CompositeVideoClip([bg_video, overlay])
+            video = video.with_audio(final_audio)
             print("Background video loaded!")
         except Exception as e:
             print(f"Video failed: {e}")
@@ -337,14 +287,15 @@ def create_youtube_short(quote, author, image_path):
         img_resized = img.resize((1080, 1920))
         vertical_path = "vertical_quote.png"
         img_resized.save(vertical_path)
-        video = ImageClip(
-            vertical_path, duration=duration).with_audio(final_audio)
+        video = ImageClip(vertical_path, duration=duration)
+        video = video.with_audio(final_audio)
         print("Using static image!")
 
+    # Step 5: Pick random animation
     animation = random.choice(ANIMATIONS)
     print(f"Animation: {animation}")
 
-    # Step 6: Text overlays
+    # Step 6: Add text overlays
     try:
         clips = [video]
 
@@ -360,23 +311,36 @@ def create_youtube_short(quote, author, image_path):
             text_align="center",
             stroke_color="black",
             stroke_width=2
-        ).with_position(("center", 250)).with_start(0).with_duration(8)
+        )
+        hook_clip = hook_clip.with_position(("center", 250))
+        hook_clip = hook_clip.with_start(0)
+        hook_clip = hook_clip.with_duration(8)
         clips.append(hook_clip)
 
         # Countdown 5 to 1
+        countdown_colors = [
+            "#FFFFFF",
+            "#FFFFFF",
+            "#FFFFFF",
+            "#FFFFFF",
+            "#FFFFFF",
+        ]
+
         for i, number in enumerate(["5\n", "4\n", "3\n", "2\n", "1\n"]):
             num_clip = TextClip(
                 text=number,
                 font_size=250,
-                color="#FFFFFF",
+                color=countdown_colors[i],
                 font="LiberationSans-Bold",
                 method="label",
                 text_align="center",
                 stroke_color="white",
                 stroke_width=8
-            ).with_position(("center", 750)).with_start(
-                COUNTDOWN_START + i * COUNTDOWN_EACH
-            ).with_duration(COUNTDOWN_EACH)
+            )
+            num_clip = num_clip.with_position(("center", 750))
+            num_clip = num_clip.with_start(
+                COUNTDOWN_START + i * COUNTDOWN_EACH)
+            num_clip = num_clip.with_duration(COUNTDOWN_EACH)
             clips.append(num_clip)
 
         # GO!
@@ -389,55 +353,63 @@ def create_youtube_short(quote, author, image_path):
             text_align="center",
             stroke_color="black",
             stroke_width=8
-        ).with_position(("center", 800)).with_start(
-            COUNTDOWN_START + COUNTDOWN_NUMBERS * COUNTDOWN_EACH
-        ).with_duration(GO_DURATION)
+        )
+        go_clip = go_clip.with_position(("center", 800))
+        go_clip = go_clip.with_start(
+            COUNTDOWN_START + COUNTDOWN_NUMBERS * COUNTDOWN_EACH)
+        go_clip = go_clip.with_duration(GO_DURATION)
         clips.append(go_clip)
 
-        # ✅ SENTENCE BY SENTENCE KARAOKE ENGINE
+        # ✅ SUBTITLE STYLE — Rapid 1-2 word flashes that wipe clean instantly
         if timing_data:
-            print(f"Processing sentence karaoke segments...")
-            chunks = split_into_sentences(timing_data, quote)
+            print(f"Creating subtitle clips...")
+            chunks = split_into_chunks(timing_data, words_per_chunk=2)
 
             for chunk in chunks:
+                # Add VOICE_DELAY offset to sync with delayed voice
                 chunk_start = chunk["start"] + VOICE_DELAY
-                chunk_dur = max(chunk["duration"], 0.5)
+                chunk_dur = max(chunk["duration"], 0.35)
 
+                # Skip if goes beyond video
                 if chunk_start >= duration:
                     break
 
-                # Wrap long sentences
-                wrapped_text = textwrap.fill(
-                    chunk["text"], width=20) + "\n\n"
-
                 subtitle_clip = TextClip(
-                    text=wrapped_text,
-                    font_size=65,
+                    text=chunk["text"],
+                    font_size=75,
                     color="white",
                     font="LiberationSans-Bold",
                     method="caption",
                     size=(900, None),
                     text_align="center",
                     stroke_color="black",
-                    stroke_width=3
+                    stroke_width=4
                 )
-                subtitle_clip = subtitle_clip.with_position(("center", 650))
+                subtitle_clip = subtitle_clip.with_position(("center", "center"))
                 subtitle_clip = subtitle_clip.with_start(chunk_start)
                 subtitle_clip = subtitle_clip.with_duration(chunk_dur)
                 clips.append(subtitle_clip)
 
-            print(f"Generated {len(chunks)} sentence karaoke chunks!")
+            print(f"Added {len(chunks)} subtitle chunks!")
 
         else:
-            # Fallback full quote
+            # Fallback — show full quote at once if no timing data
             print("No timing data — showing full quote")
             lines = quote.split('\n')
-            wrapped_lines = [
-                textwrap.fill(l, width=25) if len(l) > 25 else l
-                for l in lines
-            ]
+            wrapped_lines = []
+            for line in lines:
+                if len(line) > 25:
+                    wrapped = textwrap.fill(line, width=25)
+                    wrapped_lines.append(wrapped)
+                else:
+                    wrapped_lines.append(line)
             quote_text = '\n'.join(wrapped_lines) + '\n\n'
-            q_font_size = 55 if len(quote) > 100 else 60
+
+            quote_start = VOICE_DELAY
+            if len(quote) > 100:
+                q_font_size = 55
+            else:
+                q_font_size = 60
 
             quote_clip = TextClip(
                 text=quote_text,
@@ -450,14 +422,13 @@ def create_youtube_short(quote, author, image_path):
                 stroke_color="black",
                 stroke_width=1
             )
-            quote_clip = apply_animation(
-                quote_clip, animation, 450
-            ).with_start(VOICE_DELAY).with_duration(
-                duration - VOICE_DELAY)
+            quote_clip = apply_animation(quote_clip, animation, 450)
+            quote_clip = quote_clip.with_start(quote_start)
+            quote_clip = quote_clip.with_duration(duration - quote_start)
             clips.append(quote_clip)
 
-        # Author
-        author_start = VOICE_DELAY + quote_duration + 0.3
+        # Author — appears after voice finishes quote
+        author_start = VOICE_DELAY + voice_duration + 0.3
         author_clip = TextClip(
             text=f"— {author}\n\n",
             font_size=36,
@@ -468,9 +439,11 @@ def create_youtube_short(quote, author, image_path):
             text_align="center",
             stroke_color="black",
             stroke_width=1
-        ).with_position(("center", 1100)).with_start(
-            max(author_start, VOICE_DELAY)
-        ).with_duration(duration - max(author_start, VOICE_DELAY))
+        )
+        author_clip = author_clip.with_position(("center", 1100))
+        author_clip = author_clip.with_start(max(author_start, VOICE_DELAY))
+        author_clip = author_clip.with_duration(
+            duration - max(author_start, VOICE_DELAY))
         clips.append(author_clip)
 
         # Subscribe watermark
@@ -484,7 +457,10 @@ def create_youtube_short(quote, author, image_path):
             text_align="center",
             stroke_color="black",
             stroke_width=1
-        ).with_position(("center", 1600)).with_start(0).with_duration(duration)
+        )
+        channel_clip = channel_clip.with_position(("center", 1600))
+        channel_clip = channel_clip.with_start(0)
+        channel_clip = channel_clip.with_duration(duration)
         clips.append(channel_clip)
 
         # End screen
@@ -498,8 +474,10 @@ def create_youtube_short(quote, author, image_path):
             text_align="center",
             stroke_color="black",
             stroke_width=2
-        ).with_position(("center", 900)).with_start(
-            duration - 5).with_duration(5)
+        )
+        end_screen_clip = end_screen_clip.with_position(("center", 900))
+        end_screen_clip = end_screen_clip.with_start(duration - 5)
+        end_screen_clip = end_screen_clip.with_duration(5)
         clips.append(end_screen_clip)
 
         # Bell reminder
@@ -513,12 +491,14 @@ def create_youtube_short(quote, author, image_path):
             text_align="center",
             stroke_color="black",
             stroke_width=1
-        ).with_position(("center", 1300)).with_start(
-            duration - 5).with_duration(5)
+        )
+        bell_clip = bell_clip.with_position(("center", 1300))
+        bell_clip = bell_clip.with_start(duration - 5)
+        bell_clip = bell_clip.with_duration(5)
         clips.append(bell_clip)
 
         final_video = CompositeVideoClip(clips)
-        print("Sentence karaoke animations added!")
+        print("Subtitle style animations added!")
 
     except Exception as e:
         print(f"Text animation failed: {e}")
@@ -533,7 +513,7 @@ def create_youtube_short(quote, author, image_path):
     )
 
     # Cleanup
-    for f in [quote_audio_path, author_audio_path, timing_path,
+    for f in [audio_path, timing_path,
               "background_video.mp4", "vertical_quote.png"]:
         if os.path.exists(f):
             os.remove(f)
