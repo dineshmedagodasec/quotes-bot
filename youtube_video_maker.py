@@ -535,3 +535,4 @@ def create_youtube_short(quote, author, image_path):
             os.remove(f)
 
     return output_path
+    
