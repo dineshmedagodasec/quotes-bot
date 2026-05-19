@@ -139,7 +139,7 @@ async def generate_voice_with_timing(text, voice, audio_path, timing_path):
     """Generate voice with a custom natural speed rate and capture word timing data"""
     timing_data = []
     
-    # SSML structure to slow voice rate down by 12% to remove the robotic tone
+    # SSML structure to slow voice rate down by 12% to remove robotic tones
     ssml_text = f"""
     <speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='en-US'>
         <voice name='{voice}'>
@@ -416,7 +416,7 @@ def create_youtube_short(quote, author, image_path):
                 base_subtitle = base_subtitle.with_duration(chunk_dur)
                 clips.append(base_subtitle)
 
-                # Progressive Layer: Micro-target each active word inside the chunk to paint it yellow
+                # Progressive Layer: Micro-target active word to paint Sky Blue
                 for word_info in chunk["words"]:
                     w_start = word_info["start"] + VOICE_DELAY
                     w_dur = word_info["end"] - word_info["start"]
@@ -427,7 +427,7 @@ def create_youtube_short(quote, author, image_path):
                     highlight_clip = TextClip(
                         text=word_info["word"] + "\n",
                         font_size=75,
-                        color="##00D2FF",  # Bright progressive karaoke gold/yellow
+                        color="#87CEEB",  # Updated to Sky Blue
                         font="LiberationSans-Bold",
                         method="caption",
                         size=(900, None),
