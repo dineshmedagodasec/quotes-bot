@@ -136,9 +136,18 @@ def apply_animation(clip, animation, base_y):
     return clip
 
 async def generate_voice_with_timing(text, voice, audio_path, timing_path):
-    """Generate voice and capture word timing data"""
+    """Generate voice with a custom natural speed rate and capture word timing data"""
     timing_data = []
-    communicate = edge_tts.Communicate(text, voice)
+    
+    # SSML structure to slow voice rate down by 12% to remove the robotic tone
+    ssml_text = f"""
+    <speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='en-US'>
+        <voice name='{voice}'>
+            <prosody rate='-12%'>{text}</prosody>
+        </voice>
+    </speak>
+    """
+    communicate = edge_tts.Communicate(ssml_text, voice, is_ssml=True)
 
     with open(audio_path, "wb") as audio_file:
         async for chunk in communicate.stream():
@@ -158,7 +167,7 @@ async def generate_voice_with_timing(text, voice, audio_path, timing_path):
     return timing_data
 
 def split_into_chunks(timing_data, words_per_chunk=2):
-    """Split words into fast, punchy karaoke-style subtitle chunks"""
+    """Split words into fast, punchy karaoke-style subtitle chunks with precise micro-timings"""
     chunks = []
     i = 0
     while i < len(timing_data):
@@ -167,11 +176,22 @@ def split_into_chunks(timing_data, words_per_chunk=2):
             chunk_text = ' '.join([w["word"] for w in chunk_words]).upper()
             chunk_start = chunk_words[0]["start"]
             chunk_end = chunk_words[-1]["start"] + chunk_words[-1]["duration"]
+            
+            # Map tracking data for progressive highlighting
+            word_details = []
+            for w in chunk_words:
+                word_details.append({
+                    "word": w["word"].upper(),
+                    "start": w["start"],
+                    "end": w["start"] + w["duration"]
+                })
+                
             chunks.append({
                 "text": chunk_text,
                 "start": chunk_start,
                 "end": chunk_end,
-                "duration": chunk_end - chunk_start
+                "duration": chunk_end - chunk_start,
+                "words": word_details
             })
         i += words_per_chunk
     return chunks
@@ -181,7 +201,6 @@ def create_youtube_short(quote, author, image_path):
     selected_voice = random.choice(VOICES)
     print(f"Voice: {selected_voice}")
 
-    # Strip legacy structures clean
     if " - " in quote: quote = quote.split(" - ")[0]
     if "—" in quote: quote = quote.split("—")[0]
     quote = quote.replace('\n', ' ').replace('"', '').strip()
@@ -230,7 +249,7 @@ def create_youtube_short(quote, author, image_path):
             fps=44100
         )
 
-    # Step 2: Set duration (Extended slightly to give the full quote screen room to display)
+    # Step 2: Set duration
     duration = max(VOICE_DELAY + voice_duration + 8, 45)
     duration = min(duration, 59)
     print(f"Duration: {duration} seconds")
@@ -357,7 +376,6 @@ def create_youtube_short(quote, author, image_path):
         go_clip = go_clip.with_duration(GO_DURATION)
         clips.append(go_clip)
 
-        # Force timeline generation fallback if API data didn't fetch
         if not timing_data:
             print("Generating tracking array manually...")
             words = quote.split()
@@ -369,21 +387,21 @@ def create_youtube_short(quote, author, image_path):
                     "duration": estimated_word_duration
                 })
 
-        # ✅ SUBTITLE STYLE — Rapid 1-2 word flashes that wipe clean instantly
+        # ✅ SUBTITLE STYLE — Rapid 1-2 word flashes with Progressive Highlighting
         if timing_data:
             print(f"Creating subtitle clips...")
             chunks = split_into_chunks(timing_data, words_per_chunk=2)
 
             for chunk in chunks:
-                # FIXED: Precise voice file offset alignment sync
                 chunk_start = chunk["start"] + VOICE_DELAY
                 chunk_dur = max(chunk["duration"], 0.35)
 
                 if chunk_start >= duration:
                     break
 
-                subtitle_clip = TextClip(
-                    text=chunk["text"] + "\n",  # FIXED: Added \n to prevent text truncation issues
+                # Base Layer: Flat White Text
+                base_subtitle = TextClip(
+                    text=chunk["text"] + "\n",
                     font_size=75,
                     color="white",
                     font="LiberationSans-Bold",
@@ -393,14 +411,38 @@ def create_youtube_short(quote, author, image_path):
                     stroke_color="black",
                     stroke_width=4
                 )
-                subtitle_clip = subtitle_clip.with_position(("center", "center"))
-                subtitle_clip = subtitle_clip.with_start(chunk_start)
-                subtitle_clip = subtitle_clip.with_duration(chunk_dur)
-                clips.append(subtitle_clip)
+                base_subtitle = base_subtitle.with_position(("center", "center"))
+                base_subtitle = base_subtitle.with_start(chunk_start)
+                base_subtitle = base_subtitle.with_duration(chunk_dur)
+                clips.append(base_subtitle)
 
-            print(f"Added {len(chunks)} subtitle chunks!")
+                # Progressive Layer: Micro-target each active word inside the chunk to paint it yellow
+                for word_info in chunk["words"]:
+                    w_start = word_info["start"] + VOICE_DELAY
+                    w_dur = word_info["end"] - word_info["start"]
+                    
+                    if w_start >= duration:
+                        break
 
-        # ✅ FIXED: Display full wrapped text quote block 1 second after voice ends
+                    highlight_clip = TextClip(
+                        text=word_info["word"] + "\n",
+                        font_size=75,
+                        color="##00D2FF",  # Bright progressive karaoke gold/yellow
+                        font="LiberationSans-Bold",
+                        method="caption",
+                        size=(900, None),
+                        text_align="center",
+                        stroke_color="black",
+                        stroke_width=4
+                    )
+                    highlight_clip = highlight_clip.with_position(("center", "center"))
+                    highlight_clip = highlight_clip.with_start(w_start)
+                    highlight_clip = highlight_clip.with_duration(max(w_dur, 0.15))
+                    clips.append(highlight_clip)
+
+            print(f"Added {len(chunks)} highlighted subtitle chunks!")
+
+        # Display full wrapped text quote block 1 second after voice ends
         full_quote_start = VOICE_DELAY + voice_duration + 1.0
         
         if full_quote_start < duration:
@@ -431,7 +473,6 @@ def create_youtube_short(quote, author, image_path):
                 stroke_color="black",
                 stroke_width=1
             )
-            # Reapply your original position and chosen random entry animation
             full_quote_clip = apply_animation(full_quote_clip, animation, 450)
             full_quote_clip = full_quote_clip.with_start(full_quote_start)
             full_quote_clip = full_quote_clip.with_duration(duration - full_quote_start)
