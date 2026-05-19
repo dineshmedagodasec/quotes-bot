@@ -145,14 +145,11 @@ async def generate_voice_with_timing(text, voice, audio_path, timing_path):
             if chunk["type"] == "audio":
                 audio_file.write(chunk["data"])
             elif chunk["type"] == "WordBoundary":
-                # Strip out punctuation markers cleanly to stop word chunk grouping faults
-                clean_word = chunk["text"].strip(".,!?;:\"()[]")
-                if clean_word:
-                    timing_data.append({
-                        "word": clean_word,
-                        "start": chunk["offset"] / 10000000,  # Convert to seconds
-                        "duration": chunk["duration"] / 10000000
-                    })
+                timing_data.append({
+                    "word": chunk["text"],
+                    "start": chunk["offset"] / 10000000,  # Convert to seconds
+                    "duration": chunk["duration"] / 10000000
+                })
 
     # Save timing data
     with open(timing_path, "w") as f:
@@ -184,13 +181,13 @@ def create_youtube_short(quote, author, image_path):
     selected_voice = random.choice(VOICES)
     print(f"Voice: {selected_voice}")
 
-    # Clean the raw text data inside Step 1 to keep text chunks separated from the author profile
+    # Clean text to guarantee that author data never creeps into the subtitle processing pipeline
     if " - " in quote: quote = quote.split(" - ")[0]
     if "—" in quote: quote = quote.split("—")[0]
     quote = quote.replace('\n', ' ').replace('"', '').strip()
     author = author.replace('-', '').replace('—', '').strip()
 
-    tts_text = f"{quote}"  # <-- FIXED: Removed author string addition here so it doesn't chunk!
+    tts_text = f"{quote}"
     audio_path = "quote_audio.mp3"
     timing_path = "quote_timing.json"
     voice_duration = 20
@@ -359,6 +356,18 @@ def create_youtube_short(quote, author, image_path):
             COUNTDOWN_START + COUNTDOWN_NUMBERS * COUNTDOWN_EACH)
         go_clip = go_clip.with_duration(GO_DURATION)
         clips.append(go_clip)
+
+        # Force timeline generation to protect against empty edge-tts returns
+        if not timing_data:
+            print("Timing data was missing in log. Constructing precise fallback word tokens.")
+            words = quote.split()
+            estimated_word_duration = voice_duration / max(len(words), 1)
+            for running_idx, current_word in enumerate(words):
+                timing_data.append({
+                    "word": current_word.strip(".,!?;:\"()[]"),
+                    "start": running_idx * estimated_word_duration,
+                    "duration": estimated_word_duration
+                })
 
         # ✅ SUBTITLE STYLE — Rapid 1-2 word flashes that wipe clean instantly
         if timing_data:
