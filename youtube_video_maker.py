@@ -181,7 +181,7 @@ def create_youtube_short(quote, author, image_path):
     selected_voice = random.choice(VOICES)
     print(f"Voice: {selected_voice}")
 
-    # Clean text to guarantee that author data never creeps into the subtitle processing pipeline
+    # Strip legacy structures clean
     if " - " in quote: quote = quote.split(" - ")[0]
     if "—" in quote: quote = quote.split("—")[0]
     quote = quote.replace('\n', ' ').replace('"', '').strip()
@@ -230,8 +230,8 @@ def create_youtube_short(quote, author, image_path):
             fps=44100
         )
 
-    # Step 2: Set duration
-    duration = max(VOICE_DELAY + voice_duration + 5, 40)
+    # Step 2: Set duration (Extended slightly to give the full quote screen room to display)
+    duration = max(VOICE_DELAY + voice_duration + 8, 45)
     duration = min(duration, 59)
     print(f"Duration: {duration} seconds")
 
@@ -357,9 +357,9 @@ def create_youtube_short(quote, author, image_path):
         go_clip = go_clip.with_duration(GO_DURATION)
         clips.append(go_clip)
 
-        # Force timeline generation to protect against empty edge-tts returns
+        # Force timeline generation fallback if API data didn't fetch
         if not timing_data:
-            print("Timing data was missing in log. Constructing precise fallback word tokens.")
+            print("Generating tracking array manually...")
             words = quote.split()
             estimated_word_duration = voice_duration / max(len(words), 1)
             for running_idx, current_word in enumerate(words):
@@ -375,16 +375,15 @@ def create_youtube_short(quote, author, image_path):
             chunks = split_into_chunks(timing_data, words_per_chunk=2)
 
             for chunk in chunks:
-                # Add VOICE_DELAY offset to sync with delayed voice
+                # FIXED: Precise voice file offset alignment sync
                 chunk_start = chunk["start"] + VOICE_DELAY
                 chunk_dur = max(chunk["duration"], 0.35)
 
-                # Skip if goes beyond video
                 if chunk_start >= duration:
                     break
 
                 subtitle_clip = TextClip(
-                    text=chunk["text"],
+                    text=chunk["text"] + "\n",  # FIXED: Added \n to prevent text truncation issues
                     font_size=75,
                     color="white",
                     font="LiberationSans-Bold",
@@ -401,9 +400,11 @@ def create_youtube_short(quote, author, image_path):
 
             print(f"Added {len(chunks)} subtitle chunks!")
 
-        else:
-            # Fallback — show full quote at once if no timing data
-            print("No timing data — showing full quote")
+        # ✅ FIXED: Display full wrapped text quote block 1 second after voice ends
+        full_quote_start = VOICE_DELAY + voice_duration + 1.0
+        
+        if full_quote_start < duration:
+            print(f"Scheduling full text animation display at {full_quote_start}s")
             lines = quote.split('\n')
             wrapped_lines = []
             for line in lines:
@@ -414,13 +415,12 @@ def create_youtube_short(quote, author, image_path):
                     wrapped_lines.append(line)
             quote_text = '\n'.join(wrapped_lines) + '\n\n'
 
-            quote_start = VOICE_DELAY
             if len(quote) > 100:
                 q_font_size = 55
             else:
                 q_font_size = 60
 
-            quote_clip = TextClip(
+            full_quote_clip = TextClip(
                 text=quote_text,
                 font_size=q_font_size,
                 color="white",
@@ -431,10 +431,11 @@ def create_youtube_short(quote, author, image_path):
                 stroke_color="black",
                 stroke_width=1
             )
-            quote_clip = apply_animation(quote_clip, animation, 450)
-            quote_clip = quote_clip.with_start(quote_start)
-            quote_clip = quote_clip.with_duration(duration - quote_start)
-            clips.append(quote_clip)
+            # Reapply your original position and chosen random entry animation
+            full_quote_clip = apply_animation(full_quote_clip, animation, 450)
+            full_quote_clip = full_quote_clip.with_start(full_quote_start)
+            full_quote_clip = full_quote_clip.with_duration(duration - full_quote_start)
+            clips.append(full_quote_clip)
 
         # Author — appears after voice finishes quote
         author_start = VOICE_DELAY + voice_duration + 0.3
